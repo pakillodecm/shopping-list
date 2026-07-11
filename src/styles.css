@@ -1,1 +1,159 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ==========================================================================
+   Design tokens (theme variables)
+   Light theme lives in :root (default). Dark theme overrides via
+   [data-theme="dark"] on the <html> element (set later, Stage 7).
+   ========================================================================== */
+
+:root {
+  /* ---- Brand / primary ---- */
+  --color-primary: #0066cc;
+  --color-primary-hover: #0052a3;
+  --color-primary-active: #003d7a;
+  --color-on-primary: #ffffff; /* text/icons placed on top of --color-primary */
+
+  /* ---- Surfaces ---- */
+  --color-background: #ffffff;   /* page background */
+  --color-surface: #f5f7fa;      /* cards, panels */
+  --color-surface-raised: #ffffff; /* elevated elements (modals, menus) */
+  --color-border: #d8dfe6;
+  --color-border-strong: #b7c2cd;
+
+  /* ---- Text ---- */
+  --color-text: #1a2733;
+  --color-text-muted: #55636f;
+  --color-text-disabled: #9aa5ad;
+
+  /* ---- Feedback ---- */
+  --color-success: #1e7d34;
+  --color-success-bg: #e6f4ea;
+  --color-danger: #c62828;
+  --color-danger-bg: #fbe9e7;
+  --color-warning: #9a6700;
+  --color-warning-bg: #fff4de;
+
+  /* ---- Focus / interaction ---- */
+  --color-focus-ring: #0066cc;
+  --overlay-hover: rgba(0, 0, 0, 0.04);
+  --overlay-active: rgba(0, 0, 0, 0.08);
+
+  /* ---- Typography ---- */
+  --font-family-base: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-xxl: 2rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --line-height-base: 1.5;
+
+  /* ---- Spacing scale ---- */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+
+  /* ---- Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 999px; /* pills, circular buttons */
+
+  /* ---- Shadows ---- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+
+  /* ---- Motion ---- */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+}
+
+[data-theme="dark"] {
+  --color-primary: #4da3ff;
+  --color-primary-hover: #77b8ff;
+  --color-primary-active: #a3d0ff;
+  --color-on-primary: #101820;
+
+  --color-background: #101820;
+  --color-surface: #1a2733;
+  --color-surface-raised: #223140;
+  --color-border: #2e3c48;
+  --color-border-strong: #3f4f5c;
+
+  --color-text: #eef2f6;
+  --color-text-muted: #a9b6c2;
+  --color-text-disabled: #647079;
+
+  --color-success: #4caf6a;
+  --color-success-bg: #16281c;
+  --color-danger: #ef5350;
+  --color-danger-bg: #2c1a1a;
+  --color-warning: #ffb84d;
+  --color-warning-bg: #2c2416;
+
+  --color-focus-ring: #4da3ff;
+  --overlay-hover: rgba(255, 255, 255, 0.06);
+  --overlay-active: rgba(255, 255, 255, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+   Global resets
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+  transition: background-color var(--transition-base), color var(--transition-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 var(--space-sm) 0;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.25;
+}
+
+p {
+  margin: 0 0 var(--space-md) 0;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
