@@ -47,6 +47,14 @@ A shared family shopping-list app: real-time sync across devices, PWA (Android +
 6. **Do not build anything marked out-of-scope / Phase 2 / Phase 3** in the source of truth unless the user explicitly asks. Stay within the current stage.
 7. Keep secrets (Supabase keys, tokens) out of the repo. Use environment variables; never commit credentials. Ensure `.gitignore` covers `node_modules/`, environment files, and build output.
 
+## Commit conventions
+
+Use **Conventional Commits** for every commit message: `type: short description`, in English, imperative mood.
+
+Common types: `feat` (new functionality), `fix` (bug fix), `docs` (documentation only), `chore` (tooling/config/deps), `refactor` (no behavior change), `test` (tests), `style` (formatting only).
+
+Example: `feat: add username uniqueness check on registration`.
+
 ## Commands (PowerShell)
 
 - Install dependencies: `npm install`
