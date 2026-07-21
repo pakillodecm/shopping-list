@@ -89,7 +89,7 @@ Do not jump ahead. Finish, test, and get approval for a stage before starting th
 
 ## Current stage
 
-> **Stage 1 — Auth & accounts.** Stage 0 (Foundations) is complete: Angular PWA scaffolded, CSS design tokens in place, Supabase project created (all MVP tables, functions, triggers and RLS policies in place per the source of truth), Angular connected to Supabase via `SupabaseService`, env-driven secrets working locally and on Cloudflare Pages, deployed and auto-deploying on every push to `main`. (Update this line as the project progresses so every session knows where we are.)
+> **Stage 2 — Lists.** Stage 1 (Auth & accounts) is complete: registration (with all validation rules, including a DB-level username format constraint and case-insensitive uniqueness), login/logout, authGuard and guestGuard wired to real routes, a temporary Home screen at `/` gated by authGuard, and full login→Home→logout→login navigation flow verified end-to-end in the browser. (Update this line as the project progresses so every session knows where we are.)
 
 ## Git workflow
 
@@ -107,7 +107,15 @@ Never propose or start a second task while the previous one is still uncommitted
 
 ## Project structure
 
-> To be filled in after Stage 0 scaffolding. Keep this section updated with the real folder layout so sessions have an accurate map.
+- `src/app/core/` — app-wide singleton services and guards: `supabase.service.ts`, `auth.service.ts`, `auth.guard.ts`, `guest.guard.ts`.
+- `src/app/features/auth/` — `auth-form.css` (shared styles for login/register), plus `register/`, `login/`, `logout-button/`.
+- `src/app/features/home/` — temporary landing screen; Stage 2 will replace it with the real lists screen.
+- `src/app/app.ts` / `app.html` — root component: just `router-outlet`.
+- `src/app/app.routes.ts` — route definitions.
+- `src/environments/` — gitignored except `environment.example.ts`.
+- `src/styles.css` — design tokens (theming) + global resets.
+- `docs/` — `ai-source-of-truth.md`, `planning.md`.
+- `scripts/generate-env.js` — generates `environment.ts` from env vars, run before start/build.
 
 ## Key domain reminders (full detail in the source of truth)
 
@@ -118,3 +126,4 @@ Never propose or start a second task while the previous one is still uncommitted
 - `invitation_code`: 6 chars, uppercase + digits, excluding ambiguous O/I/L/0/1; auto-generated on list creation; lives as a field on the list.
 - `username`: unique, case-insensitive, 3–20 chars, letters/digits/underscore, must start with a letter.
 - Deleting a list cascades to its items, memberships, and requests.
+- Supabase Auth's "Confirm email" setting must stay OFF in the project dashboard (Authentication → Providers → Email) — the MVP has no email verification flow, and leaving it on locks new users out with an `email_not_confirmed` error.
