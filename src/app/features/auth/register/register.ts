@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/auth.service';
 
-const USERNAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+export const USERNAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
 
 @Component({
   selector: 'app-register',
