@@ -46,7 +46,7 @@ A shared family shopping-list app: real-time sync across devices, PWA (Android +
 5. **Destructive/irreversible actions require explicit user confirmation** (delete list, delete item, sole-owner leave, remove member). Use a consistent confirmation pattern app-wide.
 6. **Do not build anything marked out-of-scope / Phase 2 / Phase 3** in the source of truth unless the user explicitly asks. Stay within the current stage.
 7. Keep secrets (Supabase keys, tokens) out of the repo. Use environment variables; never commit credentials. Ensure `.gitignore` covers `node_modules/`, environment files, and build output.
-8. **Never run `git commit` (or `git push`) on your own initiative.** Make changes, leave them unstaged/uncommitted, and tell the user what changed. The user reviews and commits manually, unless they explicitly ask you to commit in that specific message.
+8. **Never run `git commit` (or `git push`) yourself, under any circumstances** — not even if the user says "yes", "go ahead", or approves in chat. After making changes, summarize what changed and propose a suggested commit message (in Conventional Commits format), then stop. The user always runs `git add` / `git commit` themselves in their own terminal.
 
 ## Commit conventions
 

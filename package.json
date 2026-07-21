@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "prestart": "node scripts/generate-env.js",
     "start": "ng serve",
+    "prebuild": "node scripts/generate-env.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
@@ -26,6 +28,7 @@
     "@angular/build": "^22.0.6",
     "@angular/cli": "^22.0.6",
     "@angular/compiler-cli": "^22.0.0",
+    "dotenv": "^17.4.2",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",

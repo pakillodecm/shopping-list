@@ -39,6 +39,9 @@ testem.log
 /typings
 __screenshots__/
 
+# Local environment variables (Supabase keys, etc.)
+/.env
+
 # System files
 .DS_Store
 Thumbs.db
