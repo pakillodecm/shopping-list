@@ -3,28 +3,23 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth.service';
 
-const USERNAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
-
 @Component({
-  selector: 'app-register',
+  selector: 'app-login',
   imports: [ReactiveFormsModule],
-  templateUrl: './register.html',
+  templateUrl: './login.html',
   styleUrl: '../auth-form.css',
 })
-export class Register {
+export class Login {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
 
   protected readonly isSubmitting = signal(false);
   protected readonly serverError = signal<string | null>(null);
-  protected readonly registered = signal(false);
+  protected readonly loggedIn = signal(false);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    username: ['', [Validators.required, Validators.pattern(USERNAME_PATTERN)]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    firstName: ['', [Validators.required]],
-    lastName: ['', [Validators.required]],
+    password: ['', [Validators.required]],
   });
 
   async submit(): Promise<void> {
@@ -36,8 +31,8 @@ export class Register {
     this.isSubmitting.set(true);
     this.serverError.set(null);
 
-    const { email, username, password, firstName, lastName } = this.form.getRawValue();
-    const { error } = await this.authService.signUp(email, password, username, firstName, lastName);
+    const { email, password } = this.form.getRawValue();
+    const { error } = await this.authService.signIn(email, password);
 
     this.isSubmitting.set(false);
 
@@ -46,22 +41,17 @@ export class Register {
       return;
     }
 
-    this.registered.set(true);
+    this.loggedIn.set(true);
     this.form.reset();
   }
 
   private toReadableError(message: string): string {
     const normalized = message.toLowerCase();
 
-    if (
-      normalized.includes('already registered') ||
-      normalized.includes('already exists') ||
-      normalized.includes('duplicate') ||
-      normalized.includes('unique')
-    ) {
-      return 'Ese email o nombre de usuario ya está en uso.';
+    if (normalized.includes('invalid login credentials')) {
+      return 'Email o contraseña incorrectos.';
     }
 
-    return 'No se ha podido completar el registro. Inténtalo de nuevo.';
+    return 'No se ha podido iniciar sesión. Inténtalo de nuevo.';
   }
 }

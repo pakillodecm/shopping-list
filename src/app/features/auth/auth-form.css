@@ -1,34 +1,34 @@
-/* Mobile-first: base styles target a narrow viewport (RNF-10). */
+/* Shared visual style for auth forms (register, login). Mobile-first (RNF-10). */
 
-.register {
+.auth-form {
   width: 100%;
   margin-inline: auto;
   padding: var(--space-lg) var(--space-md);
 }
 
-h1 {
+.auth-form h1 {
   font-size: var(--font-size-xl);
   margin-bottom: var(--space-lg);
 }
 
-form {
+.auth-form form {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
 }
 
-.field {
+.auth-form .field {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
-label {
+.auth-form label {
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-sm);
 }
 
-input {
+.auth-form input {
   min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-border);
@@ -38,36 +38,36 @@ input {
   transition: border-color var(--transition-fast);
 }
 
-input:focus-visible {
+.auth-form input:focus-visible {
   border-color: var(--color-focus-ring);
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
 
-.field-error {
+.auth-form .field-error {
   margin: 0;
   color: var(--color-danger);
   font-size: var(--font-size-sm);
 }
 
-.alert {
+.auth-form .alert {
   margin: 0;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
 
-.alert-danger {
+.auth-form .alert-danger {
   color: var(--color-danger);
   background-color: var(--color-danger-bg);
 }
 
-.alert-success {
+.auth-form .alert-success {
   color: var(--color-success);
   background-color: var(--color-success-bg);
 }
 
-button {
+.auth-form button {
   width: 100%;
   min-height: 44px;
   padding: var(--space-sm) var(--space-md);
@@ -81,15 +81,15 @@ button {
   transition: background-color var(--transition-fast);
 }
 
-button:hover:not(:disabled) {
+.auth-form button:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
 }
 
-button:active:not(:disabled) {
+.auth-form button:active:not(:disabled) {
   background-color: var(--color-primary-active);
 }
 
-button:disabled {
+.auth-form button:disabled {
   background-color: var(--color-border);
   color: var(--color-text-disabled);
   cursor: not-allowed;
@@ -97,7 +97,7 @@ button:disabled {
 
 /* Wider viewports: constrain to a comfortable reading/form width. */
 @media (min-width: 600px) {
-  .register {
+  .auth-form {
     max-width: 400px;
     margin-block: var(--space-xxl);
     padding: var(--space-xl);
