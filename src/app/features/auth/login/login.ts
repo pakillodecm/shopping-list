@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/auth.service';
 
@@ -12,10 +13,10 @@ import { AuthService } from '../../../core/auth.service';
 export class Login {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly isSubmitting = signal(false);
   protected readonly serverError = signal<string | null>(null);
-  protected readonly loggedIn = computed(() => this.authService.user() !== null);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -34,14 +35,13 @@ export class Login {
     const { email, password } = this.form.getRawValue();
     const { error } = await this.authService.signIn(email, password);
 
-    this.isSubmitting.set(false);
-
     if (error) {
+      this.isSubmitting.set(false);
       this.serverError.set(this.toReadableError(error.message));
       return;
     }
 
-    this.form.reset();
+    await this.router.navigateByUrl('/');
   }
 
   private toReadableError(message: string): string {

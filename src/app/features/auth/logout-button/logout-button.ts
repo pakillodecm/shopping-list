@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/auth.service';
 
@@ -34,10 +35,12 @@ import { AuthService } from '../../../core/auth.service';
 })
 export class LogoutButton {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly user = this.authService.user;
 
   async signOut(): Promise<void> {
     await this.authService.signOut();
+    await this.router.navigateByUrl('/login');
   }
 }

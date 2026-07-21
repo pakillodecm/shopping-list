@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/auth.service';
 
@@ -14,10 +15,10 @@ const USERNAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
 export class Register {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly isSubmitting = signal(false);
   protected readonly serverError = signal<string | null>(null);
-  protected readonly registered = computed(() => this.authService.user() !== null);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -39,14 +40,13 @@ export class Register {
     const { email, username, password, firstName, lastName } = this.form.getRawValue();
     const { error } = await this.authService.signUp(email, password, username, firstName, lastName);
 
-    this.isSubmitting.set(false);
-
     if (error) {
+      this.isSubmitting.set(false);
       this.serverError.set(this.toReadableError(error.message));
       return;
     }
 
-    this.form.reset();
+    await this.router.navigateByUrl('/');
   }
 
   private toReadableError(message: string): string {
