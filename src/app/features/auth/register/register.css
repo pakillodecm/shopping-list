@@ -1,16 +1,20 @@
+/* Mobile-first: base styles target a narrow viewport (RNF-10). */
+
 .register {
-  max-width: 24rem;
-  margin: var(--space-xxl) auto;
-  padding: var(--space-lg);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-lg);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .field {
@@ -25,23 +29,31 @@ label {
 }
 
 input {
-  padding: var(--space-sm);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background-color: var(--color-surface-raised);
   color: var(--color-text);
+  transition: border-color var(--transition-fast);
+}
+
+input:focus-visible {
+  border-color: var(--color-focus-ring);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 
 .field-error {
   margin: 0;
   color: var(--color-danger);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
 }
 
 .alert {
   margin: 0;
   padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
 
@@ -56,11 +68,14 @@ input {
 }
 
 button {
+  width: 100%;
+  min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background-color: var(--color-primary);
   color: var(--color-on-primary);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: background-color var(--transition-fast);
@@ -75,6 +90,20 @@ button:active:not(:disabled) {
 }
 
 button:disabled {
+  background-color: var(--color-border);
   color: var(--color-text-disabled);
   cursor: not-allowed;
+}
+
+/* Wider viewports: constrain to a comfortable reading/form width. */
+@media (min-width: 600px) {
+  .register {
+    max-width: 400px;
+    margin-block: var(--space-xxl);
+    padding: var(--space-xl);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
 }
