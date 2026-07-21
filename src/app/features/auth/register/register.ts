@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/auth.service';
@@ -17,7 +17,7 @@ export class Register {
 
   protected readonly isSubmitting = signal(false);
   protected readonly serverError = signal<string | null>(null);
-  protected readonly registered = signal(false);
+  protected readonly registered = computed(() => this.authService.user() !== null);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -46,7 +46,6 @@ export class Register {
       return;
     }
 
-    this.registered.set(true);
     this.form.reset();
   }
 
