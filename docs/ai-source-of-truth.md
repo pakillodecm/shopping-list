@@ -15,8 +15,9 @@ Shared family shopping-list app. Free, ad-free, real-time sync across devices. P
 ## Tech stack (fixed)
 
 - **Frontend:** Angular, configured as a PWA (Angular Service Worker).
-- **Backend:** Supabase (Postgres + Auth + Realtime + Storage).
+- **Backend:** Supabase (Postgres + Auth + Realtime).
 - **Auth:** Supabase Auth. Email = login identity. Email + password. **No email verification in MVP.**
+  - Operational note (discovered during implementation): the "Confirm email" toggle (Supabase dashboard → Authentication → Providers → Email) must stay OFF. The MVP has no email verification flow, so leaving it ON locks new accounts out with an `email_not_confirmed` error on login.
 - **Real-time:** Supabase Realtime via Postgres Changes. Subscriptions MUST respect RLS.
 - **Data security:** Postgres Row Level Security (RLS), integrated with Supabase Auth (`auth.uid()`).
 - **Theming:** CSS variables (design tokens) from the start. Visible light/dark theme selector is in the MVP.
