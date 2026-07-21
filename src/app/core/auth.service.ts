@@ -12,9 +12,16 @@ export class AuthService {
   readonly session = this.sessionSignal.asReadonly();
   readonly user = computed<User | null>(() => this.sessionSignal()?.user ?? null);
 
+  private resolveReady!: () => void;
+  /** Resolves once the initial session has been loaded, so guards don't race the async `getSession()` call on page load. */
+  readonly ready = new Promise<void>((resolve) => {
+    this.resolveReady = resolve;
+  });
+
   constructor() {
     this.supabaseService.client.auth.getSession().then(({ data }) => {
       this.sessionSignal.set(data.session);
+      this.resolveReady();
     });
 
     this.supabaseService.client.auth.onAuthStateChange((_event, session) => {
