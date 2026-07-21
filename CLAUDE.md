@@ -88,7 +88,21 @@ Do not jump ahead. Finish, test, and get approval for a stage before starting th
 
 ## Current stage
 
-> **Stage 0 — Foundations.** (Update this line as the project progresses so every session knows where we are.)
+> **Stage 1 — Auth & accounts.** Stage 0 (Foundations) is complete: Angular PWA scaffolded, CSS design tokens in place, Supabase project created (all MVP tables, functions, triggers and RLS policies in place per the source of truth), Angular connected to Supabase via `SupabaseService`, env-driven secrets working locally and on Cloudflare Pages, deployed and auto-deploying on every push to `main`. (Update this line as the project progresses so every session knows where we are.)
+
+## Git workflow
+
+Starting from Stage 1, work on a feature branch per stage (e.g. `feature/auth`, `feature/lists`), not directly on `main`. Merge back to `main` when the stage is finished and working. Stage 0 was done directly on `main`, which is fine for initial scaffolding.
+
+### Task-by-task rhythm (always follow this)
+
+1. One task at a time: each request to you should be a single, small, well-scoped piece of work (one service, one component, one function) — never several bundled together.
+2. You implement it, then summarize what changed and state any assumptions explicitly.
+3. The user reviews (in chat here, or with the help of the other Claude conversation for design questions).
+4. The user commits it themselves (see rule 8 above) with a Conventional Commit scoped to that one task.
+5. Only after that commit exists does work start on the next task.
+
+Never propose or start a second task while the previous one is still uncommitted. If the user asks for something broad ("build the invitations flow"), break it down into this same one-task-at-a-time sequence rather than doing it all at once.
 
 ## Project structure
 
