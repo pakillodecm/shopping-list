@@ -26,6 +26,7 @@ A shared family shopping-list app: real-time sync across devices, PWA (Android +
 - **Real-time:** Supabase Realtime (Postgres Changes). Must respect RLS.
 - **Security:** Postgres Row Level Security (RLS), integrated with `auth.uid()`.
 - **Theming:** CSS variables (design tokens) from the start; light/dark selector in MVP.
+- **Layout:** mobile-first (RNF-10). Real usage happens on a phone, often one-handed in a supermarket. Design for a narrow viewport first, then adapt upward. Touch targets must be comfortably tappable, not sized for a mouse cursor. Default to stacking content vertically rather than multi-column layouts.
 - **Testing:** Vitest (added when the first test is written, in Stage 1).
 - **Package manager:** npm.
 - **Hosting:** Cloudflare Pages.
