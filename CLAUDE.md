@@ -73,6 +73,7 @@ Run lint and the test suite before considering any task done.
 - Relevant tests pass (add tests for non-trivial logic).
 - Behavior matches the acceptance criteria in the source of truth.
 - Diff has been shown to the user and approved.
+- Any change that adds, removes, or modifies a screen, route, redirect, or navigation link must be checked end-to-end for navigation consistency: verify what happens after every action that changes auth/session state (login, logout, registration) or navigates between screens, from every screen the change touches — not just the happy path of the task itself. Explicitly re-check existing flows that could be affected (e.g. does logout still redirect correctly from this screen? does a guard still send users to the right place?), not only the new behavior being added.
 
 ## Build order (follow strictly, one stage at a time)
 
