@@ -37,6 +37,7 @@
   --color-focus-ring: #0066cc;
   --overlay-hover: rgba(0, 0, 0, 0.04);
   --overlay-active: rgba(0, 0, 0, 0.08);
+  --color-backdrop: rgba(15, 23, 30, 0.5);
 
   /* ---- Typography ---- */
   --font-family-base: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
@@ -101,6 +102,7 @@
   --color-focus-ring: #4da3ff;
   --overlay-hover: rgba(255, 255, 255, 0.06);
   --overlay-active: rgba(255, 255, 255, 0.12);
+  --color-backdrop: rgba(0, 0, 0, 0.7);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -156,4 +158,79 @@ button, input, select, textarea {
 :focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Shared button styles
+   Reused across features (lists, shared confirm modal, etc.) so the same
+   look/behavior doesn't get duplicated per component style sheet.
+   ========================================================================== */
+
+.btn {
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--color-primary-active);
+}
+
+.btn-primary:disabled {
+  background-color: var(--color-border);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--overlay-hover);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background-color: var(--overlay-active);
+}
+
+.btn-secondary:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn-danger:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

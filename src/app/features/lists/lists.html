@@ -66,35 +66,6 @@
                 </button>
               </div>
             </form>
-          } @else if (deletingListId() === list.id) {
-            <div class="delete-confirm">
-              <p class="delete-confirm-text">
-                ¿Seguro que quieres eliminar "{{ list.name }}"? Esta acción no se puede deshacer.
-              </p>
-
-              @if (deleteError()) {
-                <p class="alert alert-danger" role="alert">{{ deleteError() }}</p>
-              }
-
-              <div class="action-row">
-                <button
-                  type="button"
-                  class="btn btn-danger"
-                  (click)="confirmDelete(list)"
-                  [disabled]="isDeleting()"
-                >
-                  {{ isDeleting() ? 'Eliminando…' : 'Sí, eliminar' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  (click)="cancelDelete()"
-                  [disabled]="isDeleting()"
-                >
-                  No
-                </button>
-              </div>
-            </div>
           } @else {
             <span class="lists-item-name">{{ list.name }}</span>
             @if (list.owner_id === currentUserId()) {
@@ -121,5 +92,18 @@
         </li>
       }
     </ul>
+  }
+
+  @if (deletingList(); as list) {
+    <app-confirm-modal
+      title="Eliminar lista"
+      [message]="'¿Seguro que quieres eliminar &quot;' + list.name + '&quot;? Esta acción no se puede deshacer.'"
+      confirmText="Sí, eliminar"
+      cancelText="No"
+      [errorMessage]="deleteError()"
+      [busy]="isDeleting()"
+      (confirmed)="confirmDelete(list)"
+      (cancelled)="cancelDelete()"
+    />
   }
 </div>

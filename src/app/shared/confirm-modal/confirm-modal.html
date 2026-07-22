@@ -1,0 +1,35 @@
+<!-- Escape already closes the modal via the document keydown listener in the
+     component, so the click-only backdrop dismissal here has a keyboard
+     equivalent — it just isn't on this same element. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<div class="confirm-modal-backdrop" (click)="onBackdropClick($event)">
+  <div
+    class="confirm-modal"
+    role="alertdialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="titleId"
+    [attr.aria-describedby]="messageId"
+  >
+    <h2 [id]="titleId" class="confirm-modal-title">{{ title() }}</h2>
+    <p [id]="messageId" class="confirm-modal-message">{{ message() }}</p>
+
+    @if (errorMessage()) {
+      <p class="confirm-modal-alert" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <div class="confirm-modal-actions">
+      <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="onConfirm()">
+        {{ confirmText() }}
+      </button>
+      <button
+        #cancelButton
+        type="button"
+        class="btn btn-secondary"
+        [disabled]="busy()"
+        (click)="onCancel()"
+      >
+        {{ cancelText() }}
+      </button>
+    </div>
+  </div>
+</div>

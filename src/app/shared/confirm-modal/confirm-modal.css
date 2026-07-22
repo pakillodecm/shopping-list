@@ -1,0 +1,51 @@
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: var(--color-backdrop);
+  z-index: 1000;
+}
+
+.confirm-modal {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  background-color: var(--color-surface-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-modal-title {
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+.confirm-modal-message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.confirm-modal-alert {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.confirm-modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.confirm-modal-actions .btn {
+  flex: 1;
+}

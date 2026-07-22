@@ -18,8 +18,7 @@
 }
 
 .create-list-form,
-.rename-form,
-.delete-confirm {
+.rename-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -54,75 +53,6 @@
   border-color: var(--color-focus-ring);
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
-}
-
-.btn {
-  min-height: 44px;
-  padding: var(--space-sm) var(--space-md);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-}
-
-.btn-primary:active:not(:disabled) {
-  background-color: var(--color-primary-active);
-}
-
-.btn-primary:disabled {
-  background-color: var(--color-border);
-  color: var(--color-text-disabled);
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background-color: var(--color-surface-raised);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--overlay-hover);
-}
-
-.btn-secondary:active:not(:disabled) {
-  background-color: var(--overlay-active);
-}
-
-.btn-secondary:disabled {
-  color: var(--color-text-disabled);
-  cursor: not-allowed;
-}
-
-.btn-danger {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-}
-
-.btn-danger:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.btn-danger:active:not(:disabled) {
-  opacity: 0.7;
-}
-
-.btn-danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .alert {
@@ -178,15 +108,8 @@
   min-height: 36px;
 }
 
-.rename-form,
-.delete-confirm {
+.rename-form {
   width: 100%;
-}
-
-.delete-confirm-text {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
 }
 
 .action-row {

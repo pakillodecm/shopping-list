@@ -2,12 +2,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 
 import { AuthService } from '../../core/auth.service';
 import { List, ListService } from '../../core/list.service';
+import { ConfirmModal } from '../../shared/confirm-modal/confirm-modal';
 import { LogoutButton } from '../auth/logout-button/logout-button';
 import { Autofocus } from './autofocus.directive';
 
 @Component({
   selector: 'app-lists',
-  imports: [LogoutButton, Autofocus],
+  imports: [LogoutButton, Autofocus, ConfirmModal],
   templateUrl: './lists.html',
   styleUrl: './lists.css',
 })
@@ -31,6 +32,9 @@ export class Lists {
   protected readonly deletingListId = signal<string | null>(null);
   protected readonly isDeleting = signal(false);
   protected readonly deleteError = signal<string | null>(null);
+  protected readonly deletingList = computed(
+    () => this.lists().find((list) => list.id === this.deletingListId()) ?? null,
+  );
 
   constructor() {
     this.loadLists();
