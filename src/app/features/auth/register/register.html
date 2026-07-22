@@ -67,5 +67,7 @@
     <button type="submit" [disabled]="isSubmitting()">
       {{ isSubmitting() ? 'Creando cuenta…' : 'Crear cuenta' }}
     </button>
+
+    <p class="auth-form-switch">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
   </form>
 </div>

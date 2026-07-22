@@ -95,6 +95,18 @@
   cursor: not-allowed;
 }
 
+.auth-form-switch {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.auth-form-switch a {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
 /* Wider viewports: constrain to a comfortable reading/form width. */
 @media (min-width: 600px) {
   .auth-form {
