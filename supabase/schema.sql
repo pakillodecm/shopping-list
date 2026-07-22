@@ -74,6 +74,8 @@ to authenticated
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
+grant select, update on public.profiles to authenticated;
+
 
 -- ----------------------------------------------------------------------------
 -- lists
@@ -102,13 +104,31 @@ create table public.memberships (
 
 alter table public.memberships enable row level security;
 
+-- Function: checks membership bypassing RLS (security definer), so the
+-- "fellow list members" policy below doesn't query memberships from within
+-- its own policy and trigger infinite recursion (42P17).
+create function public.is_list_member(target_list_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.memberships
+    where list_id = target_list_id and user_id = auth.uid()
+  );
+$$;
+
 create policy "Memberships viewable by fellow list members"
 on public.memberships
 for select
 to authenticated
 using (
-  list_id in (select list_id from public.memberships where user_id = auth.uid())
+  user_id = auth.uid() or public.is_list_member(list_id)
 );
+
+grant select on public.memberships to authenticated;
 
 alter table public.lists enable row level security;
 
@@ -133,6 +153,8 @@ on public.lists
 for delete
 to authenticated
 using (owner_id = auth.uid());
+
+grant select, update, delete on public.lists to authenticated;
 
 
 -- ----------------------------------------------------------------------------
@@ -216,6 +238,8 @@ using (
   user_id = auth.uid()
   or list_id in (select id from public.lists where owner_id = auth.uid())
 );
+
+grant select on public.membership_requests to authenticated;
 
 -- Owner invites a registered user by username or email (RF-10)
 create function public.invite_user_to_list(p_list_id uuid, p_identifier text)
@@ -505,6 +529,8 @@ to authenticated
 using (
   list_id in (select list_id from public.memberships where user_id = auth.uid())
 );
+
+grant select, insert, update, delete on public.list_items to authenticated;
 
 -- products: no write policy yet — empty and unused until Phase 2 catalog work.
 -- RLS is enabled with no policies, so it's inaccessible by default (safe default).

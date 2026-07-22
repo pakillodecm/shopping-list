@@ -1,0 +1,121 @@
+.lists-page {
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.lists-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.lists-header h1 {
+  font-size: var(--font-size-xl);
+  margin: 0;
+}
+
+.create-list-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+
+.create-list-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.create-list-form label {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.create-list-form input {
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast);
+}
+
+.create-list-form input:focus-visible {
+  border-color: var(--color-focus-ring);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.create-list-form button {
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.create-list-form button:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.create-list-form button:active:not(:disabled) {
+  background-color: var(--color-primary-active);
+}
+
+.create-list-form button:disabled {
+  background-color: var(--color-border);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.alert {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.alert-danger {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.lists-status {
+  color: var(--color-text-muted);
+}
+
+.lists {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.lists-item {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+/* Wider viewports: constrain to a comfortable reading width. */
+@media (min-width: 600px) {
+  .lists-page {
+    max-width: 480px;
+  }
+}

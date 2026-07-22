@@ -1,0 +1,35 @@
+<div class="lists-page">
+  <header class="lists-header">
+    <h1>Tus listas</h1>
+    <app-logout-button />
+  </header>
+
+  <form class="create-list-form" (submit)="submitCreate($event, nameInput)" novalidate>
+    <div class="field">
+      <label for="newListName">Nueva lista</label>
+      <input #nameInput id="newListName" name="newListName" type="text" autocomplete="off" />
+    </div>
+
+    @if (createError()) {
+      <p class="alert alert-danger" role="alert">{{ createError() }}</p>
+    }
+
+    <button type="submit" [disabled]="isCreating()">
+      {{ isCreating() ? 'Creando…' : 'Crear lista' }}
+    </button>
+  </form>
+
+  @if (isLoading()) {
+    <p class="lists-status">Cargando tus listas…</p>
+  } @else if (loadError()) {
+    <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
+  } @else if (lists().length === 0) {
+    <p class="lists-status">Aún no tienes ninguna lista. Crea la primera.</p>
+  } @else {
+    <ul class="lists">
+      @for (list of lists(); track list.id) {
+        <li class="lists-item">{{ list.name }}</li>
+      }
+    </ul>
+  }
+</div>

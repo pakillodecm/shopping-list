@@ -17,7 +17,7 @@ export class ListService {
   createList(name: string) {
     return this.supabaseService.client
       .rpc('create_list_with_owner', { list_name: name })
-      .overrideTypes<List, { merge: false }>();
+      .single<List>();
   }
 
   getMyLists() {

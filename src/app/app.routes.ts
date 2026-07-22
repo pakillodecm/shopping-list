@@ -6,7 +6,18 @@ import { guestGuard } from './core/guest.guard';
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+    redirectTo: 'lists',
+    pathMatch: 'full',
+  },
+  {
+    path: 'lists',
+    loadComponent: () => import('./features/lists/lists').then((m) => m.Lists),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'lists/:id',
+    loadComponent: () =>
+      import('./features/lists/list-detail/list-detail').then((m) => m.ListDetail),
     canActivate: [authGuard],
   },
   {
