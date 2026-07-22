@@ -40,7 +40,10 @@ export class LogoutButton {
   protected readonly user = this.authService.user;
 
   async signOut(): Promise<void> {
-    await this.authService.signOut();
-    await this.router.navigateByUrl('/login');
+    try {
+      await this.authService.signOut();
+    } finally {
+      await this.router.navigateByUrl('/login');
+    }
   }
 }
