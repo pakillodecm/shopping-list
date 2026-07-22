@@ -28,6 +28,10 @@ export class Lists {
   protected readonly isRenaming = signal(false);
   protected readonly renameError = signal<string | null>(null);
 
+  protected readonly deletingListId = signal<string | null>(null);
+  protected readonly isDeleting = signal(false);
+  protected readonly deleteError = signal<string | null>(null);
+
   constructor() {
     this.loadLists();
   }
@@ -76,6 +80,7 @@ export class Lists {
   }
 
   startRename(listId: string): void {
+    this.deletingListId.set(null);
     this.renameError.set(null);
     this.editingListId.set(listId);
   }
@@ -110,5 +115,33 @@ export class Lists {
       this.lists.update((current) => current.map((l) => (l.id === data.id ? data : l)));
     }
     this.editingListId.set(null);
+  }
+
+  startDelete(listId: string): void {
+    this.editingListId.set(null);
+    this.deleteError.set(null);
+    this.deletingListId.set(listId);
+  }
+
+  cancelDelete(): void {
+    this.deletingListId.set(null);
+    this.deleteError.set(null);
+  }
+
+  async confirmDelete(list: List): Promise<void> {
+    this.isDeleting.set(true);
+    this.deleteError.set(null);
+
+    const { error } = await this.listService.deleteList(list.id);
+
+    this.isDeleting.set(false);
+
+    if (error) {
+      this.deleteError.set('No se ha podido eliminar la lista. Inténtalo de nuevo.');
+      return;
+    }
+
+    this.lists.update((current) => current.filter((l) => l.id !== list.id));
+    this.deletingListId.set(null);
   }
 }

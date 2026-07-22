@@ -52,7 +52,7 @@
                 <p class="alert alert-danger" role="alert">{{ renameError() }}</p>
               }
 
-              <div class="rename-actions">
+              <div class="action-row">
                 <button type="submit" class="btn btn-primary" [disabled]="isRenaming()">
                   {{ isRenaming() ? 'Guardando…' : 'Guardar' }}
                 </button>
@@ -66,17 +66,56 @@
                 </button>
               </div>
             </form>
+          } @else if (deletingListId() === list.id) {
+            <div class="delete-confirm">
+              <p class="delete-confirm-text">
+                ¿Seguro que quieres eliminar "{{ list.name }}"? Esta acción no se puede deshacer.
+              </p>
+
+              @if (deleteError()) {
+                <p class="alert alert-danger" role="alert">{{ deleteError() }}</p>
+              }
+
+              <div class="action-row">
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  (click)="confirmDelete(list)"
+                  [disabled]="isDeleting()"
+                >
+                  {{ isDeleting() ? 'Eliminando…' : 'Sí, eliminar' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="cancelDelete()"
+                  [disabled]="isDeleting()"
+                >
+                  No
+                </button>
+              </div>
+            </div>
           } @else {
             <span class="lists-item-name">{{ list.name }}</span>
             @if (list.owner_id === currentUserId()) {
-              <button
-                type="button"
-                class="btn btn-secondary rename-trigger"
-                (click)="startRename(list.id)"
-                aria-label="Renombrar {{ list.name }}"
-              >
-                Editar
-              </button>
+              <div class="lists-item-actions">
+                <button
+                  type="button"
+                  class="btn btn-secondary lists-item-action"
+                  (click)="startRename(list.id)"
+                  aria-label="Renombrar {{ list.name }}"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary lists-item-action"
+                  (click)="startDelete(list.id)"
+                  aria-label="Eliminar {{ list.name }}"
+                >
+                  Eliminar
+                </button>
+              </div>
             }
           }
         </li>
