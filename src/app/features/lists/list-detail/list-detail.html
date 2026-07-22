@@ -1,0 +1,21 @@
+<div class="list-detail-page">
+  <a routerLink="/lists" class="back-link">← Volver a mis listas</a>
+
+  @if (isLoading()) {
+    <p class="list-detail-status">Cargando…</p>
+  } @else if (loadError()) {
+    <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
+  } @else {
+    <h1 class="list-detail-title">{{ list()?.name }}</h1>
+
+    @if (items().length === 0) {
+      <p class="list-detail-status">Esta lista está vacía todavía.</p>
+    } @else {
+      <ul class="list-detail-items">
+        @for (item of items(); track item.id) {
+          <li class="list-detail-item">{{ item.text }}</li>
+        }
+      </ul>
+    }
+  }
+</div>

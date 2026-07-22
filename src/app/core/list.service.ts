@@ -27,6 +27,10 @@ export class ListService {
       .overrideTypes<List[], { merge: false }>();
   }
 
+  getList(listId: string) {
+    return this.supabaseService.client.from('lists').select('*').eq('id', listId).single<List>();
+  }
+
   renameList(listId: string, newName: string) {
     return this.supabaseService.client
       .from('lists')

@@ -93,9 +93,17 @@
 }
 
 .lists-item-name {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.lists-item-name:hover,
+.lists-item-name:focus-visible {
+  text-decoration: underline;
 }
 
 .lists-item-actions {

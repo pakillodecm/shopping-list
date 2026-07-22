@@ -67,7 +67,7 @@
               </div>
             </form>
           } @else {
-            <span class="lists-item-name">{{ list.name }}</span>
+            <a class="lists-item-name" [routerLink]="['/lists', list.id]">{{ list.name }}</a>
             @if (list.owner_id === currentUserId()) {
               <div class="lists-item-actions">
                 <button

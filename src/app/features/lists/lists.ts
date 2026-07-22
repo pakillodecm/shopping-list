@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth.service';
 import { List, ListService } from '../../core/list.service';
@@ -8,7 +9,7 @@ import { Autofocus } from './autofocus.directive';
 
 @Component({
   selector: 'app-lists',
-  imports: [LogoutButton, Autofocus, ConfirmModal],
+  imports: [LogoutButton, Autofocus, ConfirmModal, RouterLink],
   templateUrl: './lists.html',
   styleUrl: './lists.css',
 })
