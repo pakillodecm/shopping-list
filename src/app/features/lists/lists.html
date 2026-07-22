@@ -7,14 +7,21 @@
   <form class="create-list-form" (submit)="submitCreate($event, nameInput)" novalidate>
     <div class="field">
       <label for="newListName">Nueva lista</label>
-      <input #nameInput id="newListName" name="newListName" type="text" autocomplete="off" />
+      <input
+        #nameInput
+        id="newListName"
+        name="newListName"
+        type="text"
+        class="field-input"
+        autocomplete="off"
+      />
     </div>
 
     @if (createError()) {
       <p class="alert alert-danger" role="alert">{{ createError() }}</p>
     }
 
-    <button type="submit" [disabled]="isCreating()">
+    <button type="submit" class="btn btn-primary" [disabled]="isCreating()">
       {{ isCreating() ? 'Creando…' : 'Crear lista' }}
     </button>
   </form>
@@ -28,7 +35,51 @@
   } @else {
     <ul class="lists">
       @for (list of lists(); track list.id) {
-        <li class="lists-item">{{ list.name }}</li>
+        <li class="lists-item">
+          @if (editingListId() === list.id) {
+            <form class="rename-form" (submit)="submitRename($event, list, renameInput)" novalidate>
+              <input
+                #renameInput
+                class="field-input"
+                type="text"
+                [value]="list.name"
+                autocomplete="off"
+                appAutofocus
+                aria-label="Nuevo nombre de la lista"
+              />
+
+              @if (renameError()) {
+                <p class="alert alert-danger" role="alert">{{ renameError() }}</p>
+              }
+
+              <div class="rename-actions">
+                <button type="submit" class="btn btn-primary" [disabled]="isRenaming()">
+                  {{ isRenaming() ? 'Guardando…' : 'Guardar' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="cancelRename()"
+                  [disabled]="isRenaming()"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          } @else {
+            <span class="lists-item-name">{{ list.name }}</span>
+            @if (list.owner_id === currentUserId()) {
+              <button
+                type="button"
+                class="btn btn-secondary rename-trigger"
+                (click)="startRename(list.id)"
+                aria-label="Renombrar {{ list.name }}"
+              >
+                Editar
+              </button>
+            }
+          }
+        </li>
       }
     </ul>
   }

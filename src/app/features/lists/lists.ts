@@ -1,16 +1,19 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 
+import { AuthService } from '../../core/auth.service';
 import { List, ListService } from '../../core/list.service';
 import { LogoutButton } from '../auth/logout-button/logout-button';
+import { Autofocus } from './autofocus.directive';
 
 @Component({
   selector: 'app-lists',
-  imports: [LogoutButton],
+  imports: [LogoutButton, Autofocus],
   templateUrl: './lists.html',
   styleUrl: './lists.css',
 })
 export class Lists {
   private readonly listService = inject(ListService);
+  private readonly authService = inject(AuthService);
 
   protected readonly lists = signal<List[]>([]);
   protected readonly isLoading = signal(true);
@@ -18,6 +21,12 @@ export class Lists {
 
   protected readonly isCreating = signal(false);
   protected readonly createError = signal<string | null>(null);
+
+  protected readonly currentUserId = computed(() => this.authService.user()?.id ?? null);
+
+  protected readonly editingListId = signal<string | null>(null);
+  protected readonly isRenaming = signal(false);
+  protected readonly renameError = signal<string | null>(null);
 
   constructor() {
     this.loadLists();
@@ -64,5 +73,42 @@ export class Lists {
       this.lists.update((current) => [...current, data]);
     }
     nameInput.value = '';
+  }
+
+  startRename(listId: string): void {
+    this.renameError.set(null);
+    this.editingListId.set(listId);
+  }
+
+  cancelRename(): void {
+    this.editingListId.set(null);
+    this.renameError.set(null);
+  }
+
+  async submitRename(event: SubmitEvent, list: List, nameInput: HTMLInputElement): Promise<void> {
+    event.preventDefault();
+
+    const newName = nameInput.value.trim();
+    if (!newName) {
+      this.renameError.set('El nombre no puede estar vacío.');
+      return;
+    }
+
+    this.isRenaming.set(true);
+    this.renameError.set(null);
+
+    const { data, error } = await this.listService.renameList(list.id, newName);
+
+    this.isRenaming.set(false);
+
+    if (error) {
+      this.renameError.set('No se ha podido renombrar la lista. Inténtalo de nuevo.');
+      return;
+    }
+
+    if (data) {
+      this.lists.update((current) => current.map((l) => (l.id === data.id ? data : l)));
+    }
+    this.editingListId.set(null);
   }
 }
