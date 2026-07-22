@@ -91,7 +91,7 @@ Do not jump ahead. Finish, test, and get approval for a stage before starting th
 
 ## Current stage
 
-> **Stage 2 — Lists.** Stage 1 (Auth & accounts) is complete: registration (with all validation rules, including a DB-level username format constraint and case-insensitive uniqueness), login/logout, authGuard and guestGuard wired to real routes, a temporary Home screen at `/` gated by authGuard, and full login→Home→logout→login navigation flow verified end-to-end in the browser. (Update this line as the project progresses so every session knows where we are.)
+> **Stage 3 — Items.** Stage 2 (Lists) is complete: ListService (create/list/rename/delete via RLS-backed queries plus the create_list_with_owner RPC), the /lists screen (create, view, inline rename, delete via a reusable ConfirmModal with full focus-trap accessibility), route '' redirects to /lists, /lists/:id placeholder ready for Stage 3, and two RLS/database fixes discovered along the way: recursive RLS policy on memberships (fixed via a security-definer helper function) and missing table GRANTs for the authenticated role (tables were created by hand in the SQL Editor, bypassing the Table Editor's automatic grants). Full navigation flow (login/register/logout/create/rename/delete) verified end-to-end in the browser. (Update this line as the project progresses so every session knows where we are.)
 
 ## Git workflow
 
@@ -109,15 +109,18 @@ Never propose or start a second task while the previous one is still uncommitted
 
 ## Project structure
 
-- `src/app/core/` — app-wide singleton services and guards: `supabase.service.ts`, `auth.service.ts`, `auth.guard.ts`, `guest.guard.ts`.
+- `src/app/core/` — app-wide singleton services and guards: `supabase.service.ts`, `auth.service.ts`, `auth.guard.ts`, `guest.guard.ts`, `list.service.ts`.
 - `src/app/features/auth/` — `auth-form.css` (shared styles for login/register), plus `register/`, `login/`, `logout-button/`.
-- `src/app/features/home/` — temporary landing screen; Stage 2 will replace it with the real lists screen.
+- `src/app/features/lists/` — the `/lists` screen: create, view, inline rename, delete (via ConfirmModal). No longer a temporary screen — this is the real landing screen for a logged-in user.
+- `src/app/features/lists/list-detail/` — placeholder for `/lists/:id`, to be built out in Stage 3.
+- `src/app/shared/confirm-modal/` — reusable accessible confirmation modal (focus trap, Escape/backdrop dismiss, `alertdialog` role) for any destructive action across the app. Use this instead of building a new confirmation pattern per feature.
 - `src/app/app.ts` / `app.html` — root component: just `router-outlet`.
-- `src/app/app.routes.ts` — route definitions.
+- `src/app/app.routes.ts` — route definitions. `''` redirects to `/lists`.
 - `src/environments/` — gitignored except `environment.example.ts`.
-- `src/styles.css` — design tokens (theming) + global resets.
+- `src/styles.css` — design tokens (theming) + global resets + shared `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-danger` button styles used across features.
 - `docs/` — `ai-source-of-truth.md`, `planning.md`.
 - `scripts/generate-env.js` — generates `environment.ts` from env vars, run before start/build.
+- `supabase/schema.sql` — versioned copy of the DB schema (tables, functions, triggers, RLS policies, and `GRANT`s), matching what's applied by hand in the Supabase SQL Editor.
 
 ## Key domain reminders (full detail in the source of truth)
 
@@ -129,3 +132,5 @@ Never propose or start a second task while the previous one is still uncommitted
 - `username`: unique, case-insensitive, 3–20 chars, letters/digits/underscore, must start with a letter.
 - Deleting a list cascades to its items, memberships, and requests.
 - Supabase Auth's "Confirm email" setting must stay OFF in the project dashboard (Authentication → Providers → Email) — the MVP has no email verification flow, and leaving it on locks new users out with an `email_not_confirmed` error.
+- Any new table created by hand in the SQL Editor (not via the Table Editor UI) needs explicit `GRANT` statements for the `authenticated` role, matching exactly what its RLS policies allow — `GRANT` and RLS are independent layers in Postgres; without the `GRANT`, requests are rejected before RLS is even evaluated.
+- Watch for self-referential RLS policies (a policy on table X whose condition queries table X itself) — this can trigger `42P17` infinite recursion in Postgres. If a policy needs to check membership/relationship data from the same table it protects, use a `security definer` helper function instead (see `is_list_member` in `supabase/schema.sql`).
