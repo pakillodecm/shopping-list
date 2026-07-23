@@ -170,6 +170,46 @@ describe('ListService', () => {
     });
   });
 
+  describe('regenerateInvitationCode', () => {
+    it('calls the regenerate_invitation_code RPC with the list id', async () => {
+      setup();
+
+      await service.regenerateInvitationCode('list-1');
+
+      expect(supabaseServiceMock.client.rpc).toHaveBeenCalledWith('regenerate_invitation_code', {
+        p_list_id: 'list-1',
+      });
+      expect(supabaseServiceMock.client.single).toHaveBeenCalled();
+    });
+
+    it('returns the updated list with the new code', async () => {
+      const list: List = {
+        id: 'list-1',
+        owner_id: 'user-1',
+        name: 'Compra semanal',
+        invitation_code: 'XYZ987',
+        created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-02T00:00:00.000Z',
+      };
+      setup({ data: list, error: null });
+
+      const result = await service.regenerateInvitationCode('list-1');
+
+      expect(result.data).toEqual(list);
+      expect(result.error).toBeNull();
+    });
+
+    it('propagates an error (e.g. RLS blocking a non-owner) without transforming it', async () => {
+      const error = { message: 'Only the list owner can regenerate the invitation code' };
+      setup({ data: null, error });
+
+      const result = await service.regenerateInvitationCode('list-1');
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
+    });
+  });
+
   describe('deleteList', () => {
     it('deletes the list filtered by id', async () => {
       setup();

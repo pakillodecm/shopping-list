@@ -46,6 +46,12 @@ export class ListService {
       .single<List>();
   }
 
+  regenerateInvitationCode(listId: string) {
+    return this.supabaseService.client
+      .rpc('regenerate_invitation_code', { p_list_id: listId })
+      .single<List>();
+  }
+
   deleteList(listId: string) {
     return this.supabaseService.client.from('lists').delete().eq('id', listId);
   }

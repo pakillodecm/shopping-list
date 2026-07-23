@@ -16,5 +16,22 @@
     <section class="invite-qr-section">
       <qr-code [value]="list.invitation_code" [size]="220" errorCorrectionLevel="M" />
     </section>
+
+    <button type="button" class="btn btn-secondary" (click)="startRegenerateCode()">
+      Regenerar código
+    </button>
   }
 </div>
+
+@if (isConfirmingRegenerate()) {
+  <app-confirm-modal
+    title="Regenerar código de invitación"
+    message="Se generará un código nuevo y el actual dejará de funcionar para nuevas solicitudes. Las solicitudes pendientes y los miembros actuales no se ven afectados."
+    confirmText="Sí, regenerar"
+    cancelText="Cancelar"
+    [errorMessage]="regenerateError()"
+    [busy]="isRegenerating()"
+    (confirmed)="confirmRegenerateCode()"
+    (cancelled)="cancelRegenerateCode()"
+  />
+}

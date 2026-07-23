@@ -216,6 +216,40 @@ begin
 end;
 $$;
 
+-- Owner regenerates a list's invitation code, invalidating the old one for
+-- new join requests (RF-14, CA-12.3). Existing pending membership_requests
+-- are untouched — they were created against the old code but exist as rows
+-- independent of it, so they still resolve normally.
+create function public.regenerate_invitation_code(p_list_id uuid)
+returns public.lists
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_list public.lists;
+  code text;
+  code_exists boolean;
+begin
+  if not exists (select 1 from public.lists where id = p_list_id and owner_id = auth.uid()) then
+    raise exception 'Only the list owner can regenerate the invitation code';
+  end if;
+
+  loop
+    code := public.generate_invitation_code();
+    select exists(select 1 from public.lists where invitation_code = code) into code_exists;
+    exit when not code_exists;
+  end loop;
+
+  update public.lists
+  set invitation_code = code
+  where id = p_list_id
+  returning * into updated_list;
+
+  return updated_list;
+end;
+$$;
+
 
 -- ----------------------------------------------------------------------------
 -- membership_requests
