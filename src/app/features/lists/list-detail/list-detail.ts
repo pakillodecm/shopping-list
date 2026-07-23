@@ -2,6 +2,7 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { AuthService } from '../../../core/auth.service';
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
 import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
@@ -17,11 +18,16 @@ export class ListDetail implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly listService = inject(ListService);
   private readonly itemService = inject(ItemService);
+  private readonly authService = inject(AuthService);
 
-  private readonly listId = this.route.snapshot.paramMap.get('id');
+  protected readonly listId = this.route.snapshot.paramMap.get('id');
   private itemsChannel: RealtimeChannel | null = null;
 
   protected readonly list = signal<List | null>(null);
+  protected readonly currentUserId = computed(() => this.authService.user()?.id ?? null);
+  protected readonly isOwner = computed(
+    () => this.list() !== null && this.list()?.owner_id === this.currentUserId(),
+  );
   protected readonly items = signal<ListItem[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly loadError = signal<string | null>(null);

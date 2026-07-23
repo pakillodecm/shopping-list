@@ -21,6 +21,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'lists/:id/invite',
+    loadComponent: () =>
+      import('./features/lists/list-invite/list-invite').then((m) => m.ListInvite),
+    canActivate: [authGuard],
+  },
+  {
     path: 'register',
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
     canActivate: [guestGuard],

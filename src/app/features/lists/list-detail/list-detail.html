@@ -6,7 +6,12 @@
   } @else if (loadError()) {
     <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
   } @else {
-    <h1 class="list-detail-title">{{ list()?.name }}</h1>
+    <div class="list-detail-header">
+      <h1 class="list-detail-title">{{ list()?.name }}</h1>
+      @if (isOwner()) {
+        <a [routerLink]="['/lists', listId, 'invite']" class="btn btn-secondary">Invitar a esta lista</a>
+      }
+    </div>
 
     <form class="add-item-form" (submit)="submitAddItem($event, textInput)" novalidate>
       <div class="field">

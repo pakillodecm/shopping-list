@@ -1,0 +1,20 @@
+<div class="list-invite-page">
+  <a [routerLink]="['/lists', listId]" class="back-link">← Volver a la lista</a>
+
+  @if (isLoading()) {
+    <p class="list-invite-status">Cargando…</p>
+  } @else if (loadError()) {
+    <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
+  } @else if (list(); as list) {
+    <h1 class="list-invite-title">Invitar a «{{ list.name }}»</h1>
+
+    <section class="invite-code-section">
+      <p class="invite-code-label">Código de invitación</p>
+      <p class="invite-code">{{ list.invitation_code }}</p>
+    </section>
+
+    <section class="invite-qr-section">
+      <qr-code [value]="list.invitation_code" [size]="220" errorCorrectionLevel="M" />
+    </section>
+  }
+</div>
