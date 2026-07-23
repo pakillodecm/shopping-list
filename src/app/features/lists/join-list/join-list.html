@@ -1,0 +1,69 @@
+<div class="join-list-page">
+  <a routerLink="/lists" class="back-link">← Volver a mis listas</a>
+
+  <h1 class="join-list-title">Unirme a una lista</h1>
+
+  <div class="mode-toggle" role="tablist" aria-label="Método para unirte a una lista">
+    <button
+      type="button"
+      role="tab"
+      class="btn mode-toggle-btn"
+      [class.btn-primary]="mode() === 'code'"
+      [class.btn-secondary]="mode() !== 'code'"
+      [attr.aria-selected]="mode() === 'code'"
+      (click)="setMode('code')"
+    >
+      Introducir código
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="btn mode-toggle-btn"
+      [class.btn-primary]="mode() === 'qr'"
+      [class.btn-secondary]="mode() !== 'qr'"
+      [attr.aria-selected]="mode() === 'qr'"
+      (click)="setMode('qr')"
+    >
+      Escanear QR
+    </button>
+  </div>
+
+  @if (mode() === 'code') {
+    <form class="join-form" (submit)="submitJoin($event, codeInput)" novalidate>
+      <div class="field">
+        <label for="code">Código de invitación</label>
+        <input
+          #codeInput
+          id="code"
+          name="code"
+          type="text"
+          class="field-input code-input"
+          autocomplete="off"
+          maxlength="6"
+          (input)="forceUppercase(codeInput)"
+        />
+      </div>
+
+      @if (joinError()) {
+        <p class="alert alert-danger" role="alert">{{ joinError() }}</p>
+      }
+
+      @if (joinResult(); as result) {
+        <p
+          class="alert"
+          [class.alert-success]="!result.alreadyPending"
+          [class.alert-warning]="result.alreadyPending"
+          role="status"
+        >
+          {{ result.message }}
+        </p>
+      }
+
+      <button type="submit" class="btn btn-primary" [disabled]="isJoining()">
+        {{ isJoining() ? 'Enviando…' : 'Unirme' }}
+      </button>
+    </form>
+  } @else {
+    <p class="join-list-status">Escanear código QR — próximamente.</p>
+  }
+</div>

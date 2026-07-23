@@ -26,6 +26,8 @@
     </button>
   </form>
 
+  <a routerLink="/join" class="btn btn-secondary join-link">Unirme a una lista con un código</a>
+
   @if (isLoading()) {
     <p class="lists-status">Cargando tus listas…</p>
   } @else if (loadError()) {

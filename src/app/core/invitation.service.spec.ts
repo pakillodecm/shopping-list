@@ -121,6 +121,23 @@ describe('InvitationService', () => {
       expect(result.error).toEqual(error);
       expect(result.data).toBeNull();
     });
+
+    it('returns the data Supabase gives back, including already_pending', async () => {
+      const request: InviteResult = {
+        id: 'req-1',
+        user_id: 'user-1',
+        list_id: 'list-1',
+        origin: 'REQUEST',
+        created_at: '2026-01-01T00:00:00.000Z',
+        already_pending: false,
+      };
+      setup({ data: request, error: null });
+
+      const result = await service.requestToJoinByCode('ABC234');
+
+      expect(result.data).toEqual(request);
+      expect(result.error).toBeNull();
+    });
   });
 
   describe('acceptInvitation', () => {

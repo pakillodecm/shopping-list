@@ -365,9 +365,20 @@ begin
 end;
 $$;
 
--- User requests to join a list via its invitation code (RF-15)
+-- User requests to join a list via its invitation code (RF-15).
+-- Returns already_pending the same way invite_user_to_list does — see the
+-- comment on that function for why (CA-13.1 vs CA-13.4) and the
+-- column-shadowing gotcha this return shape has with `returns table (...)`,
+-- which is why every table reference below is aliased and qualified.
 create function public.request_to_join_by_code(p_code text)
-returns public.membership_requests
+returns table (
+  id uuid,
+  user_id uuid,
+  list_id uuid,
+  origin public.membership_request_origin,
+  created_at timestamptz,
+  already_pending boolean
+)
 language plpgsql
 security definer
 set search_path = public
@@ -379,8 +390,8 @@ declare
   new_request public.membership_requests;
 begin
   select * into target_list
-  from public.lists
-  where invitation_code = upper(p_code);
+  from public.lists l
+  where l.invitation_code = upper(p_code);
 
   if not found then
     raise exception 'Invalid invitation code';
@@ -391,7 +402,8 @@ begin
   end if;
 
   select exists(
-    select 1 from public.memberships where user_id = auth.uid() and list_id = target_list.id
+    select 1 from public.memberships m
+    where m.user_id = auth.uid() and m.list_id = target_list.id
   ) into is_already_member;
 
   if is_already_member then
@@ -399,18 +411,23 @@ begin
   end if;
 
   select * into existing_request
-  from public.membership_requests
-  where user_id = auth.uid() and list_id = target_list.id;
+  from public.membership_requests mr
+  where mr.user_id = auth.uid() and mr.list_id = target_list.id;
 
   if found then
-    return existing_request;
+    return query
+      select existing_request.id, existing_request.user_id, existing_request.list_id,
+             existing_request.origin, existing_request.created_at, true;
+    return;
   end if;
 
   insert into public.membership_requests (user_id, list_id, origin)
   values (auth.uid(), target_list.id, 'REQUEST')
   returning * into new_request;
 
-  return new_request;
+  return query
+    select new_request.id, new_request.user_id, new_request.list_id,
+           new_request.origin, new_request.created_at, false;
 end;
 $$;
 

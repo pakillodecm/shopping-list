@@ -27,6 +27,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'join',
+    loadComponent: () => import('./features/lists/join-list/join-list').then((m) => m.JoinList),
+    canActivate: [authGuard],
+  },
+  {
     path: 'register',
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
     canActivate: [guestGuard],

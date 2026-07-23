@@ -39,7 +39,7 @@ export class InvitationService {
   requestToJoinByCode(code: string) {
     return this.supabaseService.client
       .rpc('request_to_join_by_code', { p_code: code })
-      .single<MembershipRequest>();
+      .single<InviteResult>();
   }
 
   acceptInvitation(requestId: string) {

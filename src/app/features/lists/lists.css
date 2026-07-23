@@ -25,6 +25,13 @@
 }
 
 .create-list-form {
+  margin-bottom: var(--space-md);
+}
+
+.join-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
   margin-bottom: var(--space-xl);
 }
 
