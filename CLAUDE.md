@@ -75,7 +75,6 @@ Run lint and the test suite before considering any task done.
 - Diff has been shown to the user and approved.
 - Any change that adds, removes, or modifies a screen, route, redirect, or navigation link must be checked end-to-end for navigation consistency: verify what happens after every action that changes auth/session state (login, logout, registration) or navigates between screens, from every screen the change touches — not just the happy path of the task itself. Explicitly re-check existing flows that could be affected (e.g. does logout still redirect correctly from this screen? does a guard still send users to the right place?), not only the new behavior being added.
 - At the end of every task, explicitly list what you verified yourself (build, lint, tests, browser automation) versus what you could NOT verify and the user must check manually — and say why you couldn't (e.g. requires a second real user account, requires a real mobile device/camera, requires visually judging design quality, requires waiting on a real external event like an email or a payment). Never silently assume something works just because the code looks correct by inspection alone if it was practical to actually test it.
-- **Known test-coverage debt (not yet scheduled as a task):** `list.service.ts` and `item.service.ts` have no tests, unlike `auth.service.ts`. Keep this in mind when planning test-writing work — don't let it get forgotten, but don't implement it unprompted either.
 
 ## Build order (follow strictly, one stage at a time)
 
