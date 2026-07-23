@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
@@ -12,12 +13,13 @@ import { Autofocus } from '../autofocus.directive';
   templateUrl: './list-detail.html',
   styleUrl: './list-detail.css',
 })
-export class ListDetail {
+export class ListDetail implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly listService = inject(ListService);
   private readonly itemService = inject(ItemService);
 
   private readonly listId = this.route.snapshot.paramMap.get('id');
+  private itemsChannel: RealtimeChannel | null = null;
 
   protected readonly list = signal<List | null>(null);
   protected readonly items = signal<ListItem[]>([]);
@@ -43,6 +45,24 @@ export class ListDetail {
 
   constructor() {
     this.loadListDetail();
+    this.subscribeToItems();
+  }
+
+  ngOnDestroy(): void {
+    if (this.itemsChannel) {
+      this.itemService.unsubscribeFromItems(this.itemsChannel);
+      this.itemsChannel = null;
+    }
+  }
+
+  private subscribeToItems(): void {
+    if (!this.listId) {
+      return;
+    }
+
+    this.itemsChannel = this.itemService.subscribeToItems(this.listId, (change) => {
+      this.items.update((current) => this.itemService.mergeItemChange(current, change));
+    });
   }
 
   private async loadListDetail(): Promise<void> {

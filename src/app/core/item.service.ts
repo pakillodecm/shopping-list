@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
@@ -12,6 +13,11 @@ export interface ListItem {
   checked: boolean;
   created_at: string;
   modified_at: string;
+}
+
+export interface ItemChange {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  item: ListItem;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -60,10 +66,26 @@ export class ItemService {
     return this.supabaseService.client.from('list_items').delete().eq('id', itemId);
   }
 
-  mergeItemChange(
-    current: ListItem[],
-    change: { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; item: ListItem },
-  ): ListItem[] {
+  subscribeToItems(listId: string, onChange: (change: ItemChange) => void): RealtimeChannel {
+    return this.supabaseService.client
+      .channel(`list_items:${listId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'list_items', filter: `list_id=eq.${listId}` },
+        (payload: RealtimePostgresChangesPayload<ListItem>) => {
+          const eventType = payload.eventType;
+          const item = (eventType === 'DELETE' ? payload.old : payload.new) as ListItem;
+          onChange({ eventType, item });
+        },
+      )
+      .subscribe();
+  }
+
+  unsubscribeFromItems(channel: RealtimeChannel): void {
+    this.supabaseService.client.removeChannel(channel);
+  }
+
+  mergeItemChange(current: ListItem[], change: ItemChange): ListItem[] {
     if (change.eventType === 'DELETE') {
       return current.filter((item) => item.id !== change.item.id);
     }

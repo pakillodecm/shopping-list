@@ -539,6 +539,18 @@ using (
 
 grant select, insert, update, delete on public.list_items to authenticated;
 
+-- Stage 4 (Realtime): list_items must emit postgres_changes events so
+-- subscribed clients get INSERT/UPDATE/DELETE notifications, filtered by
+-- list_id, respecting the RLS policies above.
+alter publication supabase_realtime add table public.list_items;
+
+-- Required for DELETE events to carry list_id: with the default replica
+-- identity, Postgres only includes the primary key in the "old" row sent
+-- over logical replication, so a postgres_changes filter on list_id can
+-- never match a DELETE and the event gets silently dropped. FULL includes
+-- every column in the old row, letting the filter work for deletes too.
+alter table public.list_items replica identity full;
+
 -- products: no write policy yet — empty and unused until Phase 2 catalog work.
 -- RLS is enabled with no policies, so it's inaccessible by default (safe default).
 alter table public.products enable row level security;
