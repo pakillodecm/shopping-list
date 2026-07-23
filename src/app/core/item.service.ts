@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import { AuthService } from './auth.service';
+import { ChangeEvent, mergeChange } from './merge-change';
 import { SupabaseService } from './supabase.service';
 
 export interface ListItem {
@@ -15,10 +16,7 @@ export interface ListItem {
   modified_at: string;
 }
 
-export interface ItemChange {
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-  item: ListItem;
-}
+export type ItemChange = ChangeEvent<ListItem>;
 
 @Injectable({ providedIn: 'root' })
 export class ItemService {
@@ -86,20 +84,6 @@ export class ItemService {
   }
 
   mergeItemChange(current: ListItem[], change: ItemChange): ListItem[] {
-    if (change.eventType === 'DELETE') {
-      return current.filter((item) => item.id !== change.item.id);
-    }
-
-    const index = current.findIndex((item) => item.id === change.item.id);
-
-    if (index === -1) {
-      return [...current, change.item];
-    }
-
-    if (change.item.modified_at < current[index].modified_at) {
-      return current;
-    }
-
-    return current.map((item, i) => (i === index ? change.item : item));
+    return mergeChange(current, change);
   }
 }

@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
+import { ChangeEvent, mergeChange } from './merge-change';
 import { SupabaseService } from './supabase.service';
 
 export interface List {
@@ -8,7 +10,10 @@ export interface List {
   name: string;
   invitation_code: string;
   created_at: string;
+  modified_at: string;
 }
+
+export type ListChange = ChangeEvent<List>;
 
 @Injectable({ providedIn: 'root' })
 export class ListService {
@@ -42,5 +47,28 @@ export class ListService {
 
   deleteList(listId: string) {
     return this.supabaseService.client.from('lists').delete().eq('id', listId);
+  }
+
+  subscribeToLists(onChange: (change: ListChange) => void): RealtimeChannel {
+    return this.supabaseService.client
+      .channel('lists')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lists' },
+        (payload: RealtimePostgresChangesPayload<List>) => {
+          const eventType = payload.eventType;
+          const item = (eventType === 'DELETE' ? payload.old : payload.new) as List;
+          onChange({ eventType, item });
+        },
+      )
+      .subscribe();
+  }
+
+  unsubscribeFromLists(channel: RealtimeChannel): void {
+    this.supabaseService.client.removeChannel(channel);
+  }
+
+  mergeListChange(current: List[], change: ListChange): List[] {
+    return mergeChange(current, change);
   }
 }

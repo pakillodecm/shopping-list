@@ -71,6 +71,7 @@ describe('ListService', () => {
         name: 'Compra semanal',
         invitation_code: 'ABC234',
         created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-01T00:00:00.000Z',
       };
       setup({ data: list, error: null });
 
@@ -104,7 +105,14 @@ describe('ListService', () => {
 
     it('returns the data/error Supabase gives back', async () => {
       const lists: List[] = [
-        { id: 'list-1', owner_id: 'user-1', name: 'A', invitation_code: 'ABC234', created_at: 'x' },
+        {
+          id: 'list-1',
+          owner_id: 'user-1',
+          name: 'A',
+          invitation_code: 'ABC234',
+          created_at: 'x',
+          modified_at: 'x',
+        },
       ];
       setup({ data: lists, error: null });
 
@@ -180,6 +188,46 @@ describe('ListService', () => {
       const result = await service.deleteList('list-1');
 
       expect(result.error).toEqual(error);
+    });
+  });
+
+  describe('mergeListChange', () => {
+    function makeList(overrides: Partial<List> = {}): List {
+      return {
+        id: 'list-1',
+        owner_id: 'user-1',
+        name: 'Compra semanal',
+        invitation_code: 'ABC234',
+        created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    // Exhaustive insert/update/delete/tie-breaking behavior is covered by
+    // merge-change.spec.ts against the shared mergeChange function. These
+    // just confirm ListService delegates to it correctly.
+    it('delegates to the shared mergeChange function', () => {
+      setup();
+      const existing = makeList({ id: 'list-1' });
+      const incoming = makeList({ id: 'list-2', name: 'Lista nueva' });
+
+      const result = service.mergeListChange([existing], { eventType: 'INSERT', item: incoming });
+
+      expect(result).toEqual([existing, incoming]);
+    });
+
+    it('removes the item matching the given id on DELETE', () => {
+      setup();
+      const toKeep = makeList({ id: 'list-2', name: 'Otra lista' });
+      const toDelete = makeList({ id: 'list-1' });
+
+      const result = service.mergeListChange([toDelete, toKeep], {
+        eventType: 'DELETE',
+        item: toDelete,
+      });
+
+      expect(result).toEqual([toKeep]);
     });
   });
 });
