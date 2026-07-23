@@ -22,6 +22,9 @@ export class ListDetail {
   protected readonly isLoading = signal(true);
   protected readonly loadError = signal<string | null>(null);
 
+  protected readonly isAddingItem = signal(false);
+  protected readonly addItemError = signal<string | null>(null);
+
   constructor() {
     this.loadListDetail();
   }
@@ -56,5 +59,36 @@ export class ListDetail {
     }
 
     this.items.set(itemsResult.data ?? []);
+  }
+
+  async submitAddItem(event: SubmitEvent, textInput: HTMLInputElement): Promise<void> {
+    event.preventDefault();
+
+    if (!this.listId) {
+      return;
+    }
+
+    const text = textInput.value.trim();
+    if (!text) {
+      this.addItemError.set('El texto no puede estar vacío.');
+      return;
+    }
+
+    this.isAddingItem.set(true);
+    this.addItemError.set(null);
+
+    const { data, error } = await this.itemService.addItem(this.listId, text);
+
+    this.isAddingItem.set(false);
+
+    if (error) {
+      this.addItemError.set('No se ha podido añadir el ítem. Inténtalo de nuevo.');
+      return;
+    }
+
+    if (data) {
+      this.items.update((current) => [...current, data]);
+    }
+    textInput.value = '';
   }
 }
