@@ -30,12 +30,28 @@
       </button>
     </form>
 
+    @if (toggleError()) {
+      <p class="alert alert-danger" role="alert">{{ toggleError() }}</p>
+    }
+
     @if (items().length === 0) {
       <p class="list-detail-status">Esta lista está vacía todavía.</p>
     } @else {
       <ul class="list-detail-items">
         @for (item of items(); track item.id) {
-          <li class="list-detail-item">{{ item.text }}</li>
+          <li class="list-detail-item">
+            <label class="list-detail-item-label">
+              <input
+                type="checkbox"
+                class="list-detail-item-checkbox"
+                [checked]="item.checked"
+                [disabled]="togglingItemIds().has(item.id)"
+                (change)="toggleItem(item)"
+                aria-label="Marcar {{ item.text }} como cogido"
+              />
+              <span class="list-detail-item-text" [class.checked]="item.checked">{{ item.text }}</span>
+            </label>
+          </li>
         }
       </ul>
     }

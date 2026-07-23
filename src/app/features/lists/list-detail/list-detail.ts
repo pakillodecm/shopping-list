@@ -25,6 +25,9 @@ export class ListDetail {
   protected readonly isAddingItem = signal(false);
   protected readonly addItemError = signal<string | null>(null);
 
+  protected readonly togglingItemIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly toggleError = signal<string | null>(null);
+
   constructor() {
     this.loadListDetail();
   }
@@ -90,5 +93,35 @@ export class ListDetail {
       this.items.update((current) => [...current, data]);
     }
     textInput.value = '';
+  }
+
+  async toggleItem(item: ListItem): Promise<void> {
+    const nextChecked = !item.checked;
+
+    this.toggleError.set(null);
+    this.items.update((current) =>
+      current.map((i) => (i.id === item.id ? { ...i, checked: nextChecked } : i)),
+    );
+    this.togglingItemIds.update((current) => new Set(current).add(item.id));
+
+    const { data, error } = await this.itemService.toggleChecked(item.id, nextChecked);
+
+    this.togglingItemIds.update((current) => {
+      const next = new Set(current);
+      next.delete(item.id);
+      return next;
+    });
+
+    if (error) {
+      this.toggleError.set('No se ha podido actualizar el ítem. Inténtalo de nuevo.');
+      this.items.update((current) =>
+        current.map((i) => (i.id === item.id ? { ...i, checked: item.checked } : i)),
+      );
+      return;
+    }
+
+    if (data) {
+      this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
+    }
   }
 }

@@ -82,13 +82,41 @@
 }
 
 .list-detail-item {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: var(--color-surface);
+}
+
+.list-detail-item-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+}
+
+.list-detail-item-checkbox {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+.list-detail-item-checkbox:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.list-detail-item-text {
+  flex: 1;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.list-detail-item-text.checked {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
 }
 
 /* Wider viewports: constrain to a comfortable reading width. */
