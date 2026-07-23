@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../core/auth.service';
 import { List, ListService } from '../../core/list.service';
@@ -13,9 +14,10 @@ import { Autofocus } from './autofocus.directive';
   templateUrl: './lists.html',
   styleUrl: './lists.css',
 })
-export class Lists {
+export class Lists implements OnDestroy {
   private readonly listService = inject(ListService);
   private readonly authService = inject(AuthService);
+  private listsChannel: RealtimeChannel | null = null;
 
   protected readonly lists = signal<List[]>([]);
   protected readonly isLoading = signal(true);
@@ -39,6 +41,20 @@ export class Lists {
 
   constructor() {
     this.loadLists();
+    this.subscribeToLists();
+  }
+
+  ngOnDestroy(): void {
+    if (this.listsChannel) {
+      this.listService.unsubscribeFromLists(this.listsChannel);
+      this.listsChannel = null;
+    }
+  }
+
+  private subscribeToLists(): void {
+    this.listsChannel = this.listService.subscribeToLists((change) => {
+      this.lists.update((current) => this.listService.mergeListChange(current, change));
+    });
   }
 
   private async loadLists(): Promise<void> {
