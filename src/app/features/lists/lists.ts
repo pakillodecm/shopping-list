@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../core/auth.service';
-import { List, ListService } from '../../core/list.service';
+import { List, ListChange, ListService } from '../../core/list.service';
 import { ConfirmModal } from '../../shared/confirm-modal/confirm-modal';
 import { LogoutButton } from '../auth/logout-button/logout-button';
 import { Autofocus } from './autofocus.directive';
@@ -54,9 +54,33 @@ export class Lists implements OnDestroy {
   private subscribeToLists(): void {
     this.listsChannel = this.listService.subscribeToLists(
       (change) => {
+        if (!this.isRealMembershipChange(change)) {
+          return;
+        }
         this.lists.update((current) => this.listService.mergeListChange(current, change));
       },
       () => this.refreshLists(),
+    );
+  }
+
+  // The `lists` RLS policy also grants SELECT to users with a pending
+  // INVITE (see has_pending_invite in schema.sql), for the /invitations
+  // screen. Since this component subscribes with no filter (a "owner or
+  // member" join can't be expressed as a postgres_changes filter — see
+  // schema.sql), an owner editing a list would broadcast the change to
+  // everyone with a pending invite to it too. A DELETE is always safe to
+  // apply; an INSERT/UPDATE is only trusted if it's a list this user
+  // already has (real membership, confirmed via getMyLists) or genuinely
+  // owns — anything else is a list this user has only been invited to, not
+  // joined, and must stay off this screen until accepted.
+  private isRealMembershipChange(change: ListChange): boolean {
+    if (change.eventType === 'DELETE') {
+      return true;
+    }
+
+    return (
+      change.item.owner_id === this.currentUserId() ||
+      this.lists().some((list) => list.id === change.item.id)
     );
   }
 

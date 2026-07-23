@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
+import { AuthService } from './auth.service';
 import { ChangeEvent, mergeChange } from './merge-change';
 import { createReconnectHandler } from './realtime-reconnect';
 import { SupabaseService } from './supabase.service';
@@ -16,9 +17,14 @@ export interface List {
 
 export type ListChange = ChangeEvent<List>;
 
+interface MembershipWithList {
+  list: List;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListService {
   private readonly supabaseService = inject(SupabaseService);
+  private readonly authService = inject(AuthService);
 
   createList(name: string) {
     return this.supabaseService.client
@@ -26,11 +32,28 @@ export class ListService {
       .single<List>();
   }
 
-  getMyLists() {
-    return this.supabaseService.client
-      .from('lists')
-      .select('*')
-      .overrideTypes<List[], { merge: false }>();
+  // Lists are fetched through `memberships` rather than `select * from
+  // lists`, and explicitly filtered by the current user's id: the list
+  // owner always has a membership row too (see create_list_with_owner), so
+  // this alone determines "my lists" correctly without relying on however
+  // much the `lists` RLS policy happens to allow through. That matters
+  // because `lists` also grants SELECT to users with a pending INVITE (see
+  // has_pending_invite in schema.sql, added for the /invitations screen) —
+  // a `select * from lists` would incorrectly include those not-yet-accepted
+  // lists here.
+  async getMyLists() {
+    const userId = this.authService.user()?.id ?? null;
+
+    const { data, error } = await this.supabaseService.client
+      .from('memberships')
+      .select('list:lists(*)')
+      .eq('user_id', userId)
+      .overrideTypes<MembershipWithList[], { merge: false }>();
+
+    return {
+      data: data ? data.map((membership) => membership.list) : null,
+      error,
+    };
   }
 
   getList(listId: string) {

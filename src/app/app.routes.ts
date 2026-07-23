@@ -32,6 +32,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'invitations',
+    loadComponent: () =>
+      import('./features/invitations/invitations').then((m) => m.Invitations),
+    canActivate: [authGuard],
+  },
+  {
     path: 'register',
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
     canActivate: [guestGuard],

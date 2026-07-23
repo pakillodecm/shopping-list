@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
+import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { List, ListService } from './list.service';
+import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
 
 interface QueryResult {
@@ -39,15 +41,25 @@ function createSupabaseServiceMock(result: QueryResult) {
   return { client: builder };
 }
 
+function createAuthServiceMock(user: Partial<User> | null) {
+  return { user: () => user };
+}
+
 describe('ListService', () => {
   let supabaseServiceMock: ReturnType<typeof createSupabaseServiceMock>;
   let service: ListService;
 
-  function setup(result: QueryResult = { data: null, error: null }) {
+  function setup(
+    result: QueryResult = { data: null, error: null },
+    user: Partial<User> | null = { id: 'user-1' },
+  ) {
     TestBed.resetTestingModule();
     supabaseServiceMock = createSupabaseServiceMock(result);
     TestBed.configureTestingModule({
-      providers: [{ provide: SupabaseService, useValue: supabaseServiceMock }],
+      providers: [
+        { provide: SupabaseService, useValue: supabaseServiceMock },
+        { provide: AuthService, useValue: createAuthServiceMock(user) },
+      ],
     });
     service = TestBed.inject(ListService);
   }
@@ -93,33 +105,49 @@ describe('ListService', () => {
   });
 
   describe('getMyLists', () => {
-    it('selects from lists without adding owner/member filters (relies on RLS)', async () => {
-      setup();
+    it('selects from memberships filtered by the current user id, embedding the list', async () => {
+      setup({ data: null, error: null }, { id: 'user-1' });
 
       await service.getMyLists();
 
-      expect(supabaseServiceMock.client.from).toHaveBeenCalledWith('lists');
-      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith('*');
-      expect(supabaseServiceMock.client.eq).not.toHaveBeenCalled();
+      expect(supabaseServiceMock.client.from).toHaveBeenCalledWith('memberships');
+      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith('list:lists(*)');
+      expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('user_id', 'user-1');
     });
 
-    it('returns the data/error Supabase gives back', async () => {
-      const lists: List[] = [
-        {
-          id: 'list-1',
-          owner_id: 'user-1',
-          name: 'A',
-          invitation_code: 'ABC234',
-          created_at: 'x',
-          modified_at: 'x',
-        },
-      ];
-      setup({ data: lists, error: null });
+    it('filters by a null user id when there is no authenticated user', async () => {
+      setup({ data: null, error: null }, null);
+
+      await service.getMyLists();
+
+      expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('user_id', null);
+    });
+
+    it('unwraps the embedded list out of each membership row', async () => {
+      const listA: List = {
+        id: 'list-1',
+        owner_id: 'user-1',
+        name: 'A',
+        invitation_code: 'ABC234',
+        created_at: 'x',
+        modified_at: 'x',
+      };
+      setup({ data: [{ list: listA }], error: null });
 
       const result = await service.getMyLists();
 
-      expect(result.data).toEqual(lists);
+      expect(result.data).toEqual([listA]);
       expect(result.error).toBeNull();
+    });
+
+    it('propagates an error without transforming it', async () => {
+      const error = { message: 'network error' };
+      setup({ data: null, error });
+
+      const result = await service.getMyLists();
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
     });
   });
 

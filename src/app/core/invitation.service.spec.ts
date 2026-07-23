@@ -3,7 +3,12 @@ import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from './auth.service';
-import { InvitationService, InviteResult, MembershipRequest, PendingRequest } from './invitation.service';
+import {
+  InvitationService,
+  InviteResult,
+  PendingInvitation,
+  PendingRequest,
+} from './invitation.service';
 import { SupabaseService } from './supabase.service';
 
 interface QueryResult {
@@ -225,13 +230,13 @@ describe('InvitationService', () => {
   });
 
   describe('getMyPendingInvitations', () => {
-    it('selects membership_requests filtered by the current user id and origin INVITE', async () => {
+    it('selects membership_requests filtered by the current user id and origin INVITE, embedding the list name', async () => {
       setup({ data: null, error: null }, { id: 'user-1' });
 
       await service.getMyPendingInvitations();
 
       expect(supabaseServiceMock.client.from).toHaveBeenCalledWith('membership_requests');
-      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith('*');
+      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith('*, list:lists(name)');
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('user_id', 'user-1');
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('origin', 'INVITE');
     });
@@ -244,14 +249,15 @@ describe('InvitationService', () => {
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('user_id', null);
     });
 
-    it('returns the data/error Supabase gives back', async () => {
-      const requests: MembershipRequest[] = [
+    it('returns the data/error Supabase gives back, including the embedded list', async () => {
+      const requests: PendingInvitation[] = [
         {
           id: 'req-1',
           user_id: 'user-1',
           list_id: 'list-1',
           origin: 'INVITE',
           created_at: '2026-01-01T00:00:00.000Z',
+          list: { name: 'Compra semanal' },
         },
       ];
       setup({ data: requests, error: null });

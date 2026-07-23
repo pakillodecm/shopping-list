@@ -1,0 +1,46 @@
+<div class="invitations-page">
+  <a routerLink="/lists" class="back-link">← Volver a tus listas</a>
+
+  <h1 class="invitations-title">Invitaciones pendientes</h1>
+
+  @if (isLoading()) {
+    <p class="invitations-status">Cargando…</p>
+  } @else if (loadError()) {
+    <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
+  } @else if (invitations().length === 0) {
+    <p class="invitations-status">No tienes invitaciones pendientes.</p>
+  } @else {
+    <ul class="invitations">
+      @for (invitation of invitations(); track invitation.id) {
+        <li class="invitation">
+          <span class="invitation-list-name">{{ invitation.list.name }}</span>
+
+          @if (actionErrors()[invitation.id]) {
+            <p class="alert alert-danger" role="alert">{{ actionErrors()[invitation.id] }}</p>
+          }
+
+          <div class="invitation-actions">
+            <button
+              type="button"
+              class="btn btn-primary invitation-action"
+              [disabled]="actioningRequestId() === invitation.id"
+              (click)="accept(invitation)"
+              aria-label="Aceptar invitación a {{ invitation.list.name }}"
+            >
+              Aceptar
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary invitation-action"
+              [disabled]="actioningRequestId() === invitation.id"
+              (click)="reject(invitation)"
+              aria-label="Rechazar invitación a {{ invitation.list.name }}"
+            >
+              Rechazar
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>

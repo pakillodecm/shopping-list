@@ -28,10 +28,14 @@
   margin-bottom: var(--space-md);
 }
 
-.join-link {
+.secondary-nav-link {
   display: block;
   text-align: center;
   text-decoration: none;
+  margin-bottom: var(--space-sm);
+}
+
+.secondary-nav-link:last-of-type {
   margin-bottom: var(--space-xl);
 }
 

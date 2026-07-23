@@ -543,6 +543,35 @@ begin
 end;
 $$;
 
+-- Stage 5 (Invitations UI): an invitee needs to see which list a pending
+-- INVITE points to (its name) before deciding whether to accept it
+-- (RF-11/RF-12), but the base "owner or member" policy on lists doesn't
+-- grant that — an invitee isn't a member yet. Uses the same
+-- security-definer pattern as is_list_member so the check reads
+-- membership_requests without going through its RLS, avoiding a policy
+-- cycle (lists policy -> membership_requests policy -> lists policy) that a
+-- plain subquery would create.
+create function public.has_pending_invite(target_list_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.membership_requests
+    where list_id = target_list_id and user_id = auth.uid() and origin = 'INVITE'
+  );
+$$;
+
+create policy "Lists are viewable by invited users"
+on public.lists
+for select
+to authenticated
+using (
+  public.has_pending_invite(id)
+);
+
 
 -- ----------------------------------------------------------------------------
 -- products (catalog — Phase 2, empty in MVP) + list_items

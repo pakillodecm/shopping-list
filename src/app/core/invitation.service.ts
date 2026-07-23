@@ -25,6 +25,14 @@ export interface PendingRequest extends MembershipRequest {
   profile: RequesterProfile;
 }
 
+export interface InvitationListSummary {
+  name: string;
+}
+
+export interface PendingInvitation extends MembershipRequest {
+  list: InvitationListSummary;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InvitationService {
   private readonly supabaseService = inject(SupabaseService);
@@ -63,10 +71,10 @@ export class InvitationService {
 
     return this.supabaseService.client
       .from('membership_requests')
-      .select('*')
+      .select('*, list:lists(name)')
       .eq('user_id', userId)
       .eq('origin', 'INVITE')
-      .overrideTypes<MembershipRequest[], { merge: false }>();
+      .overrideTypes<PendingInvitation[], { merge: false }>();
   }
 
   getPendingRequestsForList(listId: string) {
