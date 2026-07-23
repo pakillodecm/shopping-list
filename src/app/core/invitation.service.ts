@@ -15,6 +15,16 @@ export interface InviteResult extends MembershipRequest {
   already_pending: boolean;
 }
 
+export interface RequesterProfile {
+  username: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface PendingRequest extends MembershipRequest {
+  profile: RequesterProfile;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InvitationService {
   private readonly supabaseService = inject(SupabaseService);
@@ -62,9 +72,9 @@ export class InvitationService {
   getPendingRequestsForList(listId: string) {
     return this.supabaseService.client
       .from('membership_requests')
-      .select('*')
+      .select('*, profile:profiles(username, first_name, last_name)')
       .eq('list_id', listId)
       .eq('origin', 'REQUEST')
-      .overrideTypes<MembershipRequest[], { merge: false }>();
+      .overrideTypes<PendingRequest[], { merge: false }>();
   }
 }

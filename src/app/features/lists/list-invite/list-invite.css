@@ -125,6 +125,47 @@
   outline-offset: 1px;
 }
 
+.pending-requests-section {
+  margin-top: var(--space-lg);
+}
+
+.pending-requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.pending-request {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.pending-request-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.pending-request-username {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.pending-request-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.pending-request-action {
+  flex: 1;
+}
+
 /* Wider viewports: constrain to a comfortable reading width. */
 @media (min-width: 600px) {
   .list-invite-page {

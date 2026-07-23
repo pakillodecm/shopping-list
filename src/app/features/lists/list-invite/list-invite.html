@@ -57,6 +57,54 @@
         </button>
       </form>
     </section>
+
+    <section class="pending-requests-section">
+      <h2 class="invite-form-title">Solicitudes pendientes</h2>
+
+      @if (isLoadingRequests()) {
+        <p class="list-invite-status">Cargando solicitudes…</p>
+      } @else if (requestsError()) {
+        <p class="alert alert-danger" role="alert">{{ requestsError() }}</p>
+      } @else if (pendingRequests().length === 0) {
+        <p class="list-invite-status">No hay solicitudes pendientes.</p>
+      } @else {
+        <ul class="pending-requests">
+          @for (request of pendingRequests(); track request.id) {
+            <li class="pending-request">
+              <span class="pending-request-name">
+                {{ request.profile.first_name }} {{ request.profile.last_name }}
+                <span class="pending-request-username">&#64;{{ request.profile.username }}</span>
+              </span>
+
+              @if (requestActionErrors()[request.id]) {
+                <p class="alert alert-danger" role="alert">{{ requestActionErrors()[request.id] }}</p>
+              }
+
+              <div class="pending-request-actions">
+                <button
+                  type="button"
+                  class="btn btn-primary pending-request-action"
+                  [disabled]="actioningRequestId() === request.id"
+                  (click)="approveRequest(request)"
+                  aria-label="Aprobar solicitud de {{ request.profile.username }}"
+                >
+                  Aprobar
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary pending-request-action"
+                  [disabled]="actioningRequestId() === request.id"
+                  (click)="denyRequest(request)"
+                  aria-label="Denegar solicitud de {{ request.profile.username }}"
+                >
+                  Denegar
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
   }
 </div>
 

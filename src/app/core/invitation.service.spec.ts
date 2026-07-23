@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from './auth.service';
-import { InvitationService, InviteResult, MembershipRequest } from './invitation.service';
+import { InvitationService, InviteResult, MembershipRequest, PendingRequest } from './invitation.service';
 import { SupabaseService } from './supabase.service';
 
 interface QueryResult {
@@ -247,25 +247,28 @@ describe('InvitationService', () => {
   });
 
   describe('getPendingRequestsForList', () => {
-    it('selects membership_requests filtered by list id and origin REQUEST', async () => {
+    it('selects membership_requests filtered by list id and origin REQUEST, embedding the requester profile', async () => {
       setup();
 
       await service.getPendingRequestsForList('list-1');
 
       expect(supabaseServiceMock.client.from).toHaveBeenCalledWith('membership_requests');
-      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith('*');
+      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith(
+        '*, profile:profiles(username, first_name, last_name)',
+      );
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('list_id', 'list-1');
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('origin', 'REQUEST');
     });
 
-    it('returns the data/error Supabase gives back', async () => {
-      const requests: MembershipRequest[] = [
+    it('returns the data/error Supabase gives back, including the embedded profile', async () => {
+      const requests: PendingRequest[] = [
         {
           id: 'req-2',
           user_id: 'user-2',
           list_id: 'list-1',
           origin: 'REQUEST',
           created_at: '2026-01-01T00:00:00.000Z',
+          profile: { username: 'maria', first_name: 'María', last_name: 'García' },
         },
       ];
       setup({ data: requests, error: null });
