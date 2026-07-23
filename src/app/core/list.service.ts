@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import { ChangeEvent, mergeChange } from './merge-change';
+import { createReconnectHandler } from './realtime-reconnect';
 import { SupabaseService } from './supabase.service';
 
 export interface List {
@@ -49,7 +50,7 @@ export class ListService {
     return this.supabaseService.client.from('lists').delete().eq('id', listId);
   }
 
-  subscribeToLists(onChange: (change: ListChange) => void): RealtimeChannel {
+  subscribeToLists(onChange: (change: ListChange) => void, onReconnect: () => void): RealtimeChannel {
     return this.supabaseService.client
       .channel('lists')
       .on(
@@ -61,7 +62,7 @@ export class ListService {
           onChange({ eventType, item });
         },
       )
-      .subscribe();
+      .subscribe(createReconnectHandler(onReconnect));
   }
 
   unsubscribeFromLists(channel: RealtimeChannel): void {

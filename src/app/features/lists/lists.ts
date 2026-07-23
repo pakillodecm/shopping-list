@@ -52,9 +52,22 @@ export class Lists implements OnDestroy {
   }
 
   private subscribeToLists(): void {
-    this.listsChannel = this.listService.subscribeToLists((change) => {
-      this.lists.update((current) => this.listService.mergeListChange(current, change));
-    });
+    this.listsChannel = this.listService.subscribeToLists(
+      (change) => {
+        this.lists.update((current) => this.listService.mergeListChange(current, change));
+      },
+      () => this.refreshLists(),
+    );
+  }
+
+  private async refreshLists(): Promise<void> {
+    const { data, error } = await this.listService.getMyLists();
+
+    if (error) {
+      return;
+    }
+
+    this.lists.set(data ?? []);
   }
 
   private async loadLists(): Promise<void> {

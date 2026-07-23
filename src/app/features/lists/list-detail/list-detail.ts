@@ -59,10 +59,25 @@ export class ListDetail implements OnDestroy {
     if (!this.listId) {
       return;
     }
+    const listId = this.listId;
 
-    this.itemsChannel = this.itemService.subscribeToItems(this.listId, (change) => {
-      this.items.update((current) => this.itemService.mergeItemChange(current, change));
-    });
+    this.itemsChannel = this.itemService.subscribeToItems(
+      listId,
+      (change) => {
+        this.items.update((current) => this.itemService.mergeItemChange(current, change));
+      },
+      () => this.refreshItems(listId),
+    );
+  }
+
+  private async refreshItems(listId: string): Promise<void> {
+    const { data, error } = await this.itemService.getItems(listId);
+
+    if (error) {
+      return;
+    }
+
+    this.items.set(data ?? []);
   }
 
   private async loadListDetail(): Promise<void> {

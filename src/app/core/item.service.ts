@@ -3,6 +3,7 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 
 import { AuthService } from './auth.service';
 import { ChangeEvent, mergeChange } from './merge-change';
+import { createReconnectHandler } from './realtime-reconnect';
 import { SupabaseService } from './supabase.service';
 
 export interface ListItem {
@@ -64,7 +65,11 @@ export class ItemService {
     return this.supabaseService.client.from('list_items').delete().eq('id', itemId);
   }
 
-  subscribeToItems(listId: string, onChange: (change: ItemChange) => void): RealtimeChannel {
+  subscribeToItems(
+    listId: string,
+    onChange: (change: ItemChange) => void,
+    onReconnect: () => void,
+  ): RealtimeChannel {
     return this.supabaseService.client
       .channel(`list_items:${listId}`)
       .on(
@@ -76,7 +81,7 @@ export class ItemService {
           onChange({ eventType, item });
         },
       )
-      .subscribe();
+      .subscribe(createReconnectHandler(onReconnect));
   }
 
   unsubscribeFromItems(channel: RealtimeChannel): void {
