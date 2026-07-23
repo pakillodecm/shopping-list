@@ -551,6 +551,31 @@ alter publication supabase_realtime add table public.list_items;
 -- every column in the old row, letting the filter work for deletes too.
 alter table public.list_items replica identity full;
 
+-- Stage 4 (Realtime): lists needs a modified_at column so the shared
+-- mergeChange() helper (which requires id + modified_at) can be reused for
+-- list events exactly like it is for list_items.
+alter table public.lists add column modified_at timestamptz not null default now();
+
+create trigger on_list_updated
+  before update on public.lists
+  for each row execute function public.set_modified_at();
+
+-- Stage 4 (Realtime): lists must emit postgres_changes events. Unlike
+-- list_items there is no single scalar column (like list_id) to filter on —
+-- "owner or member" requires a join with memberships that a postgres_changes
+-- filter string can't express. So clients subscribe with no filter at all,
+-- relying on Realtime evaluating the "Lists are viewable by owner or
+-- members" RLS policy per subscriber before delivering each event. Verified
+-- empirically in Stage 4 testing: a user with no relationship to a list
+-- receives no events for it, while the owner does.
+alter publication supabase_realtime add table public.lists;
+
+-- Same reasoning as list_items: DELETE's "old" row only carries the primary
+-- key under the default replica identity, which isn't enough for Realtime to
+-- evaluate the RLS policy above (it needs owner_id) and the event would be
+-- dropped silently.
+alter table public.lists replica identity full;
+
 -- products: no write policy yet — empty and unused until Phase 2 catalog work.
 -- RLS is enabled with no policies, so it's inaccessible by default (safe default).
 alter table public.products enable row level security;
