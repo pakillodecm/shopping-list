@@ -82,18 +82,41 @@
                 />
                 <span class="list-detail-item-text" [class.checked]="item.checked">{{ item.text }}</span>
               </label>
-              <button
-                type="button"
-                class="btn btn-secondary list-detail-item-edit"
-                (click)="startEditItem(item.id)"
-                aria-label="Editar {{ item.text }}"
-              >
-                Editar
-              </button>
+              <div class="list-detail-item-actions">
+                <button
+                  type="button"
+                  class="btn btn-secondary list-detail-item-action"
+                  (click)="startEditItem(item.id)"
+                  aria-label="Editar {{ item.text }}"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary list-detail-item-action"
+                  (click)="startDeleteItem(item.id)"
+                  aria-label="Eliminar {{ item.text }}"
+                >
+                  Eliminar
+                </button>
+              </div>
             }
           </li>
         }
       </ul>
     }
+  }
+
+  @if (deletingItem(); as item) {
+    <app-confirm-modal
+      title="Eliminar ítem"
+      [message]="'¿Seguro que quieres eliminar &quot;' + item.text + '&quot;? Esta acción no se puede deshacer.'"
+      confirmText="Sí, eliminar"
+      cancelText="No"
+      [errorMessage]="deleteItemError()"
+      [busy]="isDeletingItem()"
+      (confirmed)="confirmDeleteItem(item)"
+      (cancelled)="cancelDeleteItem()"
+    />
   }
 </div>

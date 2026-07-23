@@ -101,10 +101,15 @@
   cursor: pointer;
 }
 
-.list-detail-item-edit {
+.list-detail-item-actions {
+  display: flex;
   flex-shrink: 0;
-  min-height: 36px;
+  gap: var(--space-sm);
   margin-right: var(--space-md);
+}
+
+.list-detail-item-action {
+  min-height: 36px;
 }
 
 .rename-form {

@@ -1,13 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
+import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
 import { Autofocus } from '../autofocus.directive';
 
 @Component({
   selector: 'app-list-detail',
-  imports: [RouterLink, Autofocus],
+  imports: [RouterLink, Autofocus, ConfirmModal],
   templateUrl: './list-detail.html',
   styleUrl: './list-detail.css',
 })
@@ -32,6 +33,13 @@ export class ListDetail {
   protected readonly editingItemId = signal<string | null>(null);
   protected readonly isEditingItem = signal(false);
   protected readonly editItemError = signal<string | null>(null);
+
+  protected readonly deletingItemId = signal<string | null>(null);
+  protected readonly isDeletingItem = signal(false);
+  protected readonly deleteItemError = signal<string | null>(null);
+  protected readonly deletingItem = computed(
+    () => this.items().find((item) => item.id === this.deletingItemId()) ?? null,
+  );
 
   constructor() {
     this.loadListDetail();
@@ -131,6 +139,7 @@ export class ListDetail {
   }
 
   startEditItem(itemId: string): void {
+    this.deletingItemId.set(null);
     this.editItemError.set(null);
     this.editingItemId.set(itemId);
   }
@@ -165,5 +174,33 @@ export class ListDetail {
       this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
     }
     this.editingItemId.set(null);
+  }
+
+  startDeleteItem(itemId: string): void {
+    this.editingItemId.set(null);
+    this.deleteItemError.set(null);
+    this.deletingItemId.set(itemId);
+  }
+
+  cancelDeleteItem(): void {
+    this.deletingItemId.set(null);
+    this.deleteItemError.set(null);
+  }
+
+  async confirmDeleteItem(item: ListItem): Promise<void> {
+    this.isDeletingItem.set(true);
+    this.deleteItemError.set(null);
+
+    const { error } = await this.itemService.deleteItem(item.id);
+
+    this.isDeletingItem.set(false);
+
+    if (error) {
+      this.deleteItemError.set('No se ha podido eliminar el ítem. Inténtalo de nuevo.');
+      return;
+    }
+
+    this.items.update((current) => current.filter((i) => i.id !== item.id));
+    this.deletingItemId.set(null);
   }
 }
