@@ -20,6 +20,43 @@
     <button type="button" class="btn btn-secondary" (click)="startRegenerateCode()">
       Regenerar código
     </button>
+
+    <section class="invite-form-section">
+      <h2 class="invite-form-title">Invitar por usuario o email</h2>
+
+      <form class="invite-form" (submit)="submitInvite($event, identifierInput)" novalidate>
+        <div class="field">
+          <label for="identifier">Nombre de usuario o email</label>
+          <input
+            #identifierInput
+            id="identifier"
+            name="identifier"
+            type="text"
+            class="field-input"
+            autocomplete="off"
+          />
+        </div>
+
+        @if (inviteError()) {
+          <p class="alert alert-danger" role="alert">{{ inviteError() }}</p>
+        }
+
+        @if (inviteResult(); as result) {
+          <p
+            class="alert"
+            [class.alert-success]="!result.alreadyPending"
+            [class.alert-warning]="result.alreadyPending"
+            role="status"
+          >
+            {{ result.message }}
+          </p>
+        }
+
+        <button type="submit" class="btn btn-primary" [disabled]="isInviting()">
+          {{ isInviting() ? 'Enviando…' : 'Invitar' }}
+        </button>
+      </form>
+    </section>
   }
 </div>
 

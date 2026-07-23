@@ -11,6 +11,10 @@ export interface MembershipRequest {
   created_at: string;
 }
 
+export interface InviteResult extends MembershipRequest {
+  already_pending: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InvitationService {
   private readonly supabaseService = inject(SupabaseService);
@@ -19,7 +23,7 @@ export class InvitationService {
   inviteUser(listId: string, identifier: string) {
     return this.supabaseService.client
       .rpc('invite_user_to_list', { p_list_id: listId, p_identifier: identifier })
-      .single<MembershipRequest>();
+      .single<InviteResult>();
   }
 
   requestToJoinByCode(code: string) {

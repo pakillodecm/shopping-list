@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from './auth.service';
-import { InvitationService, MembershipRequest } from './invitation.service';
+import { InvitationService, InviteResult, MembershipRequest } from './invitation.service';
 import { SupabaseService } from './supabase.service';
 
 interface QueryResult {
@@ -72,13 +72,14 @@ describe('InvitationService', () => {
       expect(supabaseServiceMock.client.single).toHaveBeenCalled();
     });
 
-    it('returns the data Supabase gives back', async () => {
-      const request: MembershipRequest = {
+    it('returns the data Supabase gives back, including already_pending', async () => {
+      const request: InviteResult = {
         id: 'req-1',
         user_id: 'user-2',
         list_id: 'list-1',
         origin: 'INVITE',
         created_at: '2026-01-01T00:00:00.000Z',
+        already_pending: false,
       };
       setup({ data: request, error: null });
 

@@ -282,9 +282,29 @@ using (
 
 grant select on public.membership_requests to authenticated;
 
--- Owner invites a registered user by username or email (RF-10)
+-- Owner invites a registered user by username or email (RF-10).
+-- Returns already_pending = true when a membership_requests row for this
+-- (user, list) pair already existed (of either origin) and was returned
+-- as-is, vs false when this call just inserted a brand-new INVITE row —
+-- the frontend needs this to tell "invitation sent" apart from "there's
+-- already something pending with this person" (CA-10.1 vs CA-10.4).
+--
+-- Watch for column-shadowing (42702 "column reference is ambiguous") with
+-- `returns table (...)`: each output column becomes an implicit PL/pgSQL
+-- variable in scope for the whole function body, so any *unqualified*
+-- column reference that shares a name with an output column (id, user_id,
+-- list_id here) becomes ambiguous against the actual table column.
+-- Every table reference in this function's WHERE clauses is aliased and
+-- fully qualified to avoid it.
 create function public.invite_user_to_list(p_list_id uuid, p_identifier text)
-returns public.membership_requests
+returns table (
+  id uuid,
+  user_id uuid,
+  list_id uuid,
+  origin public.membership_request_origin,
+  created_at timestamptz,
+  already_pending boolean
+)
 language plpgsql
 security definer
 set search_path = public
@@ -295,7 +315,9 @@ declare
   existing_request public.membership_requests;
   new_request public.membership_requests;
 begin
-  if not exists (select 1 from public.lists where id = p_list_id and owner_id = auth.uid()) then
+  if not exists (
+    select 1 from public.lists l where l.id = p_list_id and l.owner_id = auth.uid()
+  ) then
     raise exception 'Only the list owner can invite members';
   end if;
 
@@ -314,7 +336,8 @@ begin
   end if;
 
   select exists(
-    select 1 from public.memberships where user_id = target_user_id and list_id = p_list_id
+    select 1 from public.memberships m
+    where m.user_id = target_user_id and m.list_id = p_list_id
   ) into is_already_member;
 
   if is_already_member then
@@ -322,18 +345,23 @@ begin
   end if;
 
   select * into existing_request
-  from public.membership_requests
-  where user_id = target_user_id and list_id = p_list_id;
+  from public.membership_requests mr
+  where mr.user_id = target_user_id and mr.list_id = p_list_id;
 
   if found then
-    return existing_request;
+    return query
+      select existing_request.id, existing_request.user_id, existing_request.list_id,
+             existing_request.origin, existing_request.created_at, true;
+    return;
   end if;
 
   insert into public.membership_requests (user_id, list_id, origin)
   values (target_user_id, p_list_id, 'INVITE')
   returning * into new_request;
 
-  return new_request;
+  return query
+    select new_request.id, new_request.user_id, new_request.list_id,
+           new_request.origin, new_request.created_at, false;
 end;
 $$;
 
