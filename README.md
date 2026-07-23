@@ -1,59 +1,58 @@
-# ShoppingList
+# Shopping List
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.6.
+Lista de la compra compartida en familia: sincronización en tiempo real entre dispositivos, PWA instalable en Android e iOS, 100% gratuita, sin publicidad, privada.
 
-## Development server
+**Stack:** Angular (PWA con Angular Service Worker) · Supabase (Postgres + Auth + Realtime) · Row Level Security · Cloudflare Pages.
 
-To start a local development server, run:
+Especificación completa (modelo de datos, requisitos, criterios de aceptación, orden de construcción por etapas) en [`docs/ai-source-of-truth.md`](docs/ai-source-of-truth.md). Documento de planificación previo en [`docs/planning.md`](docs/planning.md). Manual de trabajo para desarrollo asistido por IA en [`CLAUDE.md`](CLAUDE.md).
 
-```bash
-ng serve
-```
+## Configuración local
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+1. Copia `.env.example` a `.env` y rellena las claves de tu proyecto de Supabase:
 
-## Code scaffolding
+   ```bash
+   cp .env.example .env
+   ```
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+   ```
+   SUPABASE_URL=https://tu-proyecto.supabase.co
+   SUPABASE_KEY=tu-clave-publishable
+   ```
 
-```bash
-ng generate component component-name
-```
+2. Instala dependencias:
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+   ```bash
+   npm install
+   ```
 
-```bash
-ng generate --help
-```
+`src/environments/environment.ts` y `environment.development.ts` se generan automáticamente a partir de `.env` antes de arrancar o compilar (`scripts/generate-env.js`); no se editan a mano ni se versionan.
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Desarrollo
 
 ```bash
-ng test
+npm start
 ```
 
-## Running end-to-end tests
+Abre `http://localhost:4200/`. La app se recarga automáticamente al modificar el código fuente.
 
-For end-to-end (e2e) testing, run:
+## Build
 
 ```bash
-ng e2e
+npm run build
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Genera los artefactos de producción en `dist/`.
 
-## Additional Resources
+## Tests
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```bash
+npm test
+```
+
+Ejecuta la suite de Vitest a través de Angular CLI.
+
+## Lint
+
+```bash
+npm run lint
+```

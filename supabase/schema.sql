@@ -2,9 +2,16 @@
 -- shopping-list — Database schema
 -- ============================================================================
 -- This file is a versioned record of the schema as built manually in the
--- Supabase SQL Editor. It documents tables, functions, triggers and RLS
--- policies for the MVP (Stages 0-1: profiles, lists, memberships,
--- membership_requests, list_items, products).
+-- Supabase SQL Editor. It documents the full schema as it exists today:
+-- tables, functions, triggers and RLS policies for profiles, lists,
+-- memberships, membership_requests, list_items and products.
+--
+-- This includes the Stage 5 invitation RPC functions (invite_user_to_list,
+-- request_to_join_by_code, accept_invitation, reject_invitation,
+-- approve_join_request, deny_join_request), built ahead of schedule as pure
+-- backend work while designing the full data model during Stages 1-2 — see
+-- the "Build order" exception in CLAUDE.md. They are correct and RLS-safe
+-- at the database level but have no frontend wiring yet.
 --
 -- NOTE: This file is NOT wired into any migration runner. The live database
 -- already has this schema applied via the Supabase dashboard. This file

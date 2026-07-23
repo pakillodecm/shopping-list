@@ -75,6 +75,7 @@ Run lint and the test suite before considering any task done.
 - Diff has been shown to the user and approved.
 - Any change that adds, removes, or modifies a screen, route, redirect, or navigation link must be checked end-to-end for navigation consistency: verify what happens after every action that changes auth/session state (login, logout, registration) or navigates between screens, from every screen the change touches — not just the happy path of the task itself. Explicitly re-check existing flows that could be affected (e.g. does logout still redirect correctly from this screen? does a guard still send users to the right place?), not only the new behavior being added.
 - At the end of every task, explicitly list what you verified yourself (build, lint, tests, browser automation) versus what you could NOT verify and the user must check manually — and say why you couldn't (e.g. requires a second real user account, requires a real mobile device/camera, requires visually judging design quality, requires waiting on a real external event like an email or a payment). Never silently assume something works just because the code looks correct by inspection alone if it was practical to actually test it.
+- **Known test-coverage debt (not yet scheduled as a task):** `list.service.ts` and `item.service.ts` have no tests, unlike `auth.service.ts`. Keep this in mind when planning test-writing work — don't let it get forgotten, but don't implement it unprompted either.
 
 ## Build order (follow strictly, one stage at a time)
 
@@ -89,9 +90,17 @@ Run lint and the test suite before considering any task done.
 
 Do not jump ahead. Finish, test, and get approval for a stage before starting the next.
 
+**Exception:** pure backend work (tables/functions/RLS policies) from a future stage may be built ahead of its turn if it emerges naturally while working on the current stage, involves no UI, and introduces no security risk — but this must be called out explicitly in the task summary when it happens, and the corresponding stage's scope in this document updated to reflect what already exists. Example: the Stage 5 invitation RPC functions were built during Stages 1-2 as part of designing the full data model early; this is fine, but should have been flagged and noted here at the time.
+
 ## Current stage
 
-> **Stage 3 — Items.** Stage 2 (Lists) is complete: ListService (create/list/rename/delete via RLS-backed queries plus the create_list_with_owner RPC), the /lists screen (create, view, inline rename, delete via a reusable ConfirmModal with full focus-trap accessibility), route '' redirects to /lists, /lists/:id placeholder ready for Stage 3, and two RLS/database fixes discovered along the way: recursive RLS policy on memberships (fixed via a security-definer helper function) and missing table GRANTs for the authenticated role (tables were created by hand in the SQL Editor, bypassing the Table Editor's automatic grants). Full navigation flow (login/register/logout/create/rename/delete) verified end-to-end in the browser. (Update this line as the project progresses so every session knows where we are.)
+> **Stage 3 — Items.** Stage 2 (Lists) is complete: ListService (create/list/rename/delete via RLS-backed queries plus the create_list_with_owner RPC), the /lists screen (create, view, inline rename, delete via a reusable ConfirmModal with full focus-trap accessibility), route '' redirects to /lists, /lists/:id placeholder ready for Stage 3, and two RLS/database fixes discovered along the way: recursive RLS policy on memberships (fixed via a security-definer helper function) and missing table GRANTs for the authenticated role (tables were created by hand in the SQL Editor, bypassing the Table Editor's automatic grants). Full navigation flow (login/register/logout/create/rename/delete) verified end-to-end in the browser.
+>
+> Stage 3 (Items) is complete too: ItemService (add/check-uncheck/edit/delete via direct RLS-backed queries on `list_items`), the /lists/:id screen fully built out (add item, optimistic check/uncheck with rollback on error, inline text edit, delete via ConfirmModal), all verified end-to-end in the browser.
+>
+> **Ahead-of-schedule database work (see Build order exception below):** `supabase/schema.sql` already includes the Stage 5 invitation RPC functions — `invite_user_to_list`, `request_to_join_by_code`, `accept_invitation`, `reject_invitation`, `approve_join_request`, `deny_join_request` — built and correct at the database level (RLS + `security definer`, symmetric one-pending-request rule enforced via a unique constraint). **None of this is wired into the frontend yet** — no services, no components, no routes reference these functions. Stage 5 still needs its full UI (invite by username/email, accept/reject, code/QR generation and scanning, approve/deny) built from scratch; only its backend groundwork exists.
+>
+> (Update this line as the project progresses so every session knows where we are.)
 
 ## Git workflow
 
