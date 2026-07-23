@@ -24,6 +24,7 @@ export class ItemService {
       .from('list_items')
       .select('*')
       .eq('list_id', listId)
+      .order('created_at', { ascending: true })
       .overrideTypes<ListItem[], { merge: false }>();
   }
 
