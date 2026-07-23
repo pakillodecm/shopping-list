@@ -30,6 +30,7 @@ Shared family shopping-list app. Free, ad-free, real-time sync across devices. P
 1. **100% free** at family scale. No paid tiers, no services that force payment.
 2. **Works on Android and iOS** (PWA, installable, no app stores).
 3. **Real-time sync** is a priority requirement; optimize for minimal perceived latency.
+   - Verified during Stage 4 (2026-07-23): measured, not just assumed. Using two browser tabs on the real Supabase project (Playwright, `context.setOffline` not involved — normal network conditions), timed from triggering a change on one device (checking/unchecking a `list_items` row) to the other device's UI reflecting it via the Realtime subscription. 12 measurements: range 224–863 ms, median ~840 ms, average ~660 ms. Consistently sub-second — coherent with "perceived as immediate" for a family shopping-list app (not a hard real-time/gaming context), though not literally instantaneous (<100 ms). No further optimization pursued given this result.
 4. **Privacy enforced at the database level** via RLS — never rely on the frontend alone for access control.
 5. **Passwords hashed**, never stored in plaintext (handled by Supabase Auth).
 6. Destructive/irreversible actions require explicit confirmation, consistent pattern app-wide.
