@@ -3,10 +3,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
+import { Autofocus } from '../autofocus.directive';
 
 @Component({
   selector: 'app-list-detail',
-  imports: [RouterLink],
+  imports: [RouterLink, Autofocus],
   templateUrl: './list-detail.html',
   styleUrl: './list-detail.css',
 })
@@ -27,6 +28,10 @@ export class ListDetail {
 
   protected readonly togglingItemIds = signal<ReadonlySet<string>>(new Set());
   protected readonly toggleError = signal<string | null>(null);
+
+  protected readonly editingItemId = signal<string | null>(null);
+  protected readonly isEditingItem = signal(false);
+  protected readonly editItemError = signal<string | null>(null);
 
   constructor() {
     this.loadListDetail();
@@ -123,5 +128,42 @@ export class ListDetail {
     if (data) {
       this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
     }
+  }
+
+  startEditItem(itemId: string): void {
+    this.editItemError.set(null);
+    this.editingItemId.set(itemId);
+  }
+
+  cancelEditItem(): void {
+    this.editingItemId.set(null);
+    this.editItemError.set(null);
+  }
+
+  async submitEditItem(event: SubmitEvent, item: ListItem, textInput: HTMLInputElement): Promise<void> {
+    event.preventDefault();
+
+    const newText = textInput.value.trim();
+    if (!newText) {
+      this.editItemError.set('El texto no puede estar vacío.');
+      return;
+    }
+
+    this.isEditingItem.set(true);
+    this.editItemError.set(null);
+
+    const { data, error } = await this.itemService.updateText(item.id, newText);
+
+    this.isEditingItem.set(false);
+
+    if (error) {
+      this.editItemError.set('No se ha podido editar el ítem. Inténtalo de nuevo.');
+      return;
+    }
+
+    if (data) {
+      this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
+    }
+    this.editingItemId.set(null);
   }
 }

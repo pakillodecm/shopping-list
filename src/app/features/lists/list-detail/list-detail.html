@@ -40,17 +40,57 @@
       <ul class="list-detail-items">
         @for (item of items(); track item.id) {
           <li class="list-detail-item">
-            <label class="list-detail-item-label">
-              <input
-                type="checkbox"
-                class="list-detail-item-checkbox"
-                [checked]="item.checked"
-                [disabled]="togglingItemIds().has(item.id)"
-                (change)="toggleItem(item)"
-                aria-label="Marcar {{ item.text }} como cogido"
-              />
-              <span class="list-detail-item-text" [class.checked]="item.checked">{{ item.text }}</span>
-            </label>
+            @if (editingItemId() === item.id) {
+              <form class="rename-form" (submit)="submitEditItem($event, item, editInput)" novalidate>
+                <input
+                  #editInput
+                  class="field-input"
+                  type="text"
+                  [value]="item.text"
+                  autocomplete="off"
+                  appAutofocus
+                  aria-label="Nuevo texto del ítem"
+                />
+
+                @if (editItemError()) {
+                  <p class="alert alert-danger" role="alert">{{ editItemError() }}</p>
+                }
+
+                <div class="action-row">
+                  <button type="submit" class="btn btn-primary" [disabled]="isEditingItem()">
+                    {{ isEditingItem() ? 'Guardando…' : 'Guardar' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="cancelEditItem()"
+                    [disabled]="isEditingItem()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            } @else {
+              <label class="list-detail-item-label">
+                <input
+                  type="checkbox"
+                  class="list-detail-item-checkbox"
+                  [checked]="item.checked"
+                  [disabled]="togglingItemIds().has(item.id)"
+                  (change)="toggleItem(item)"
+                  aria-label="Marcar {{ item.text }} como cogido"
+                />
+                <span class="list-detail-item-text" [class.checked]="item.checked">{{ item.text }}</span>
+              </label>
+              <button
+                type="button"
+                class="btn btn-secondary list-detail-item-edit"
+                (click)="startEditItem(item.id)"
+                aria-label="Editar {{ item.text }}"
+              >
+                Editar
+              </button>
+            }
           </li>
         }
       </ul>
