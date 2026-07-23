@@ -59,4 +59,25 @@ export class ItemService {
   deleteItem(itemId: string) {
     return this.supabaseService.client.from('list_items').delete().eq('id', itemId);
   }
+
+  mergeItemChange(
+    current: ListItem[],
+    change: { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; item: ListItem },
+  ): ListItem[] {
+    if (change.eventType === 'DELETE') {
+      return current.filter((item) => item.id !== change.item.id);
+    }
+
+    const index = current.findIndex((item) => item.id === change.item.id);
+
+    if (index === -1) {
+      return [...current, change.item];
+    }
+
+    if (change.item.modified_at < current[index].modified_at) {
+      return current;
+    }
+
+    return current.map((item, i) => (i === index ? change.item : item));
+  }
 }

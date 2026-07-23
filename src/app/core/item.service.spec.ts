@@ -225,4 +225,87 @@ describe('ItemService', () => {
       expect(result.error).toEqual(error);
     });
   });
+
+  describe('mergeItemChange', () => {
+    function makeItem(overrides: Partial<ListItem> = {}): ListItem {
+      return {
+        id: 'item-1',
+        list_id: 'list-1',
+        product_id: null,
+        author_id: 'user-1',
+        text: 'Leche',
+        checked: false,
+        created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    it('inserts a new item when it does not exist in the current array', () => {
+      setup();
+      const existing = makeItem({ id: 'item-1' });
+      const incoming = makeItem({ id: 'item-2', text: 'Pan' });
+
+      const result = service.mergeItemChange([existing], { eventType: 'INSERT', item: incoming });
+
+      expect(result).toEqual([existing, incoming]);
+    });
+
+    it('replaces the existing item when the incoming modified_at is more recent', () => {
+      setup();
+      const existing = makeItem({ modified_at: '2026-01-01T00:00:00.000Z', text: 'Leche' });
+      const incoming = makeItem({ modified_at: '2026-01-02T00:00:00.000Z', text: 'Leche entera' });
+
+      const result = service.mergeItemChange([existing], { eventType: 'UPDATE', item: incoming });
+
+      expect(result).toEqual([incoming]);
+    });
+
+    it('ignores the incoming update when its modified_at is older than the current item', () => {
+      setup();
+      const existing = makeItem({ modified_at: '2026-01-02T00:00:00.000Z', text: 'Leche entera' });
+      const incoming = makeItem({ modified_at: '2026-01-01T00:00:00.000Z', text: 'Leche' });
+
+      const result = service.mergeItemChange([existing], { eventType: 'UPDATE', item: incoming });
+
+      expect(result).toEqual([existing]);
+    });
+
+    it('applies the incoming update when modified_at is exactly equal (tie)', () => {
+      setup();
+      const existing = makeItem({ modified_at: '2026-01-01T00:00:00.000Z', text: 'Leche' });
+      const incoming = makeItem({ modified_at: '2026-01-01T00:00:00.000Z', text: 'Leche fresca' });
+
+      const result = service.mergeItemChange([existing], { eventType: 'UPDATE', item: incoming });
+
+      expect(result).toEqual([incoming]);
+    });
+
+    it('removes the item matching the given id on DELETE, regardless of modified_at', () => {
+      setup();
+      const toKeep = makeItem({ id: 'item-2', text: 'Pan' });
+      const toDelete = makeItem({ id: 'item-1', modified_at: '2099-01-01T00:00:00.000Z' });
+      const deleteChange = makeItem({ id: 'item-1', modified_at: '2000-01-01T00:00:00.000Z' });
+
+      const result = service.mergeItemChange([toDelete, toKeep], {
+        eventType: 'DELETE',
+        item: deleteChange,
+      });
+
+      expect(result).toEqual([toKeep]);
+    });
+
+    it('does not mutate the array passed in', () => {
+      setup();
+      const existing = makeItem();
+      const current = [existing];
+
+      service.mergeItemChange(current, {
+        eventType: 'UPDATE',
+        item: makeItem({ modified_at: '2026-01-02T00:00:00.000Z', text: 'Nuevo' }),
+      });
+
+      expect(current).toEqual([existing]);
+    });
+  });
 });

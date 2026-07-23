@@ -103,7 +103,9 @@ export class ListDetail {
     }
 
     if (data) {
-      this.items.update((current) => [...current, data]);
+      this.items.update((current) =>
+        this.itemService.mergeItemChange(current, { eventType: 'INSERT', item: data }),
+      );
     }
     textInput.value = '';
   }
@@ -113,7 +115,10 @@ export class ListDetail {
 
     this.toggleError.set(null);
     this.items.update((current) =>
-      current.map((i) => (i.id === item.id ? { ...i, checked: nextChecked } : i)),
+      this.itemService.mergeItemChange(current, {
+        eventType: 'UPDATE',
+        item: { ...item, checked: nextChecked },
+      }),
     );
     this.togglingItemIds.update((current) => new Set(current).add(item.id));
 
@@ -128,13 +133,15 @@ export class ListDetail {
     if (error) {
       this.toggleError.set('No se ha podido actualizar el ítem. Inténtalo de nuevo.');
       this.items.update((current) =>
-        current.map((i) => (i.id === item.id ? { ...i, checked: item.checked } : i)),
+        this.itemService.mergeItemChange(current, { eventType: 'UPDATE', item }),
       );
       return;
     }
 
     if (data) {
-      this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
+      this.items.update((current) =>
+        this.itemService.mergeItemChange(current, { eventType: 'UPDATE', item: data }),
+      );
     }
   }
 
@@ -171,7 +178,9 @@ export class ListDetail {
     }
 
     if (data) {
-      this.items.update((current) => current.map((i) => (i.id === data.id ? data : i)));
+      this.items.update((current) =>
+        this.itemService.mergeItemChange(current, { eventType: 'UPDATE', item: data }),
+      );
     }
     this.editingItemId.set(null);
   }
@@ -200,7 +209,9 @@ export class ListDetail {
       return;
     }
 
-    this.items.update((current) => current.filter((i) => i.id !== item.id));
+    this.items.update((current) =>
+      this.itemService.mergeItemChange(current, { eventType: 'DELETE', item }),
+    );
     this.deletingItemId.set(null);
   }
 }
