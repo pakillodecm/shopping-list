@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
-import { List, ListService } from './list.service';
+import { LeaveListResult, List, ListService } from './list.service';
 import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
 
@@ -256,6 +256,51 @@ describe('ListService', () => {
       const result = await service.deleteList('list-1');
 
       expect(result.error).toEqual(error);
+    });
+  });
+
+  describe('leaveList', () => {
+    it('calls the leave_list RPC with a null successor when none is given', async () => {
+      setup();
+
+      await service.leaveList('list-1');
+
+      expect(supabaseServiceMock.client.rpc).toHaveBeenCalledWith('leave_list', {
+        p_list_id: 'list-1',
+        p_successor_id: null,
+      });
+      expect(supabaseServiceMock.client.single).toHaveBeenCalled();
+    });
+
+    it('calls the leave_list RPC with the given successor id', async () => {
+      setup();
+
+      await service.leaveList('list-1', 'user-2');
+
+      expect(supabaseServiceMock.client.rpc).toHaveBeenCalledWith('leave_list', {
+        p_list_id: 'list-1',
+        p_successor_id: 'user-2',
+      });
+    });
+
+    it('returns list_deleted and new_owner_id as given back by the RPC', async () => {
+      const resultData: LeaveListResult = { list_deleted: false, new_owner_id: 'user-2' };
+      setup({ data: resultData, error: null });
+
+      const result = await service.leaveList('list-1', 'user-2');
+
+      expect(result.data).toEqual(resultData);
+      expect(result.error).toBeNull();
+    });
+
+    it('propagates an error (e.g. not a member, or a non-member successor) without transforming it', async () => {
+      const error = { message: 'The chosen successor is not a member of this list' };
+      setup({ data: null, error });
+
+      const result = await service.leaveList('list-1', 'user-2');
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
     });
   });
 

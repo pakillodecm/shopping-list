@@ -28,6 +28,11 @@ interface Membership {
   joined_at: string;
 }
 
+export interface LeaveListResult {
+  list_deleted: boolean;
+  new_owner_id: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListService {
   private readonly supabaseService = inject(SupabaseService);
@@ -84,6 +89,16 @@ export class ListService {
 
   deleteList(listId: string) {
     return this.supabaseService.client.from('lists').delete().eq('id', listId);
+  }
+
+  // leave_list returns which outcome happened (list_deleted / new_owner_id)
+  // rather than leaving it to the caller to infer from context — see the
+  // leave_list comment in schema.sql for why (same already_pending
+  // criterion as invite_user_to_list/request_to_join_by_code in Stage 5).
+  leaveList(listId: string, successorId?: string) {
+    return this.supabaseService.client
+      .rpc('leave_list', { p_list_id: listId, p_successor_id: successorId ?? null })
+      .single<LeaveListResult>();
   }
 
   subscribeToLists(onChange: (change: ListChange) => void, onReconnect: () => void): RealtimeChannel {
