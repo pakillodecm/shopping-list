@@ -5,7 +5,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AuthService } from '../../../core/auth.service';
 import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { ItemService, ListItem } from '../../../core/item.service';
-import { List, ListService } from '../../../core/list.service';
+import { List, ListChange, ListService } from '../../../core/list.service';
 import {
   ChooseSuccessorDialog,
   SuccessorOption,
@@ -34,6 +34,10 @@ export class ListDetail implements OnDestroy {
   protected readonly listId = this.route.snapshot.paramMap.get('id');
   private itemsChannel: RealtimeChannel | null = null;
   private requestsChannel: RealtimeChannel | null = null;
+  private listChannel: RealtimeChannel | null = null;
+
+  private readonly noAccessErrorMessage =
+    'No se ha podido cargar esta lista. Puede que no exista o que no tengas acceso.';
 
   protected readonly list = signal<List | null>(null);
   protected readonly currentUserId = computed(() => this.authService.user()?.id ?? null);
@@ -106,6 +110,7 @@ export class ListDetail implements OnDestroy {
   constructor() {
     this.loadListDetail();
     this.subscribeToItems();
+    this.subscribeToListChanges();
   }
 
   ngOnDestroy(): void {
@@ -116,6 +121,10 @@ export class ListDetail implements OnDestroy {
     if (this.requestsChannel) {
       this.invitationService.unsubscribeFromMembershipRequests(this.requestsChannel);
       this.requestsChannel = null;
+    }
+    if (this.listChannel) {
+      this.listService.unsubscribeFromLists(this.listChannel);
+      this.listChannel = null;
     }
   }
 
@@ -144,6 +153,47 @@ export class ListDetail implements OnDestroy {
     this.items.set(data ?? []);
   }
 
+  // Reacts to this list's own row changing elsewhere (rename, or leave_list
+  // transferring owner_id to someone else) and to it being deleted outright
+  // (sole-owner leave_list). Filtered server-side to just this listId — see
+  // subscribeToList in ListService for why that's safe without the
+  // isRealMembershipChange-style guard ListsComponent needs for its
+  // no-filter subscription on the same table.
+  private subscribeToListChanges(): void {
+    if (!this.listId) {
+      return;
+    }
+    const listId = this.listId;
+
+    this.listChannel = this.listService.subscribeToList(
+      listId,
+      (change) => this.handleListChange(change),
+      () => this.refreshList(listId),
+    );
+  }
+
+  private handleListChange(change: ListChange): void {
+    if (change.eventType === 'DELETE') {
+      this.list.set(null);
+      this.loadError.set(this.noAccessErrorMessage);
+      return;
+    }
+
+    this.list.set(change.item);
+  }
+
+  private async refreshList(listId: string): Promise<void> {
+    const { data, error } = await this.listService.getList(listId);
+
+    if (error || !data) {
+      this.list.set(null);
+      this.loadError.set(this.noAccessErrorMessage);
+      return;
+    }
+
+    this.list.set(data);
+  }
+
   private async loadListDetail(): Promise<void> {
     if (!this.listId) {
       this.isLoading.set(false);
@@ -162,7 +212,7 @@ export class ListDetail implements OnDestroy {
     this.isLoading.set(false);
 
     if (listResult.error || !listResult.data) {
-      this.loadError.set('No se ha podido cargar esta lista. Puede que no exista o que no tengas acceso.');
+      this.loadError.set(this.noAccessErrorMessage);
       return;
     }
 

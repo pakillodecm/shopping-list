@@ -116,10 +116,21 @@ export class Lists implements OnDestroy {
   // never touches the `lists` row itself — it's an INSERT on `memberships` —
   // so subscribeToLists() above never sees it. This fetches just that one
   // list and merges it in, instead of a full refetch, to keep it as
-  // immediate as every other realtime update on this screen.
+  // immediate as every other realtime update on this screen. Losing access
+  // (leave_list) is symmetrically a DELETE on `memberships` with no
+  // corresponding change on `lists` either — see subscribeToMyMemberships in
+  // ListService for why both need their own handling here. A DELETE payload
+  // is just a listId, so it's removed directly by id rather than through
+  // mergeListChange (which expects a full List row, not a Membership).
   private subscribeToMemberships(): void {
     this.membershipsChannel = this.listService.subscribeToMyMemberships(
-      (listId) => this.addNewlyJoinedList(listId),
+      (change) => {
+        if (change.eventType === 'INSERT') {
+          this.addNewlyJoinedList(change.listId);
+          return;
+        }
+        this.removeLeftList(change.listId);
+      },
       () => this.refreshLists(),
     );
   }
@@ -134,6 +145,10 @@ export class Lists implements OnDestroy {
     this.lists.update((current) =>
       this.listService.mergeListChange(current, { eventType: 'INSERT', item: data }),
     );
+  }
+
+  private removeLeftList(listId: string): void {
+    this.lists.update((current) => current.filter((list) => list.id !== listId));
   }
 
   // The `lists` RLS policy also grants SELECT to users with a pending

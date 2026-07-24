@@ -28,6 +28,10 @@ interface Membership {
   joined_at: string;
 }
 
+export type MyMembershipChange =
+  | { eventType: 'INSERT'; listId: string }
+  | { eventType: 'DELETE'; listId: string };
+
 export interface LeaveListResult {
   list_deleted: boolean;
   new_owner_id: string | null;
@@ -147,15 +151,46 @@ export class ListService {
     this.supabaseService.client.removeChannel(channel);
   }
 
+  // A single list's own row, for a screen that only cares about one list at
+  // a time (list-detail) rather than "all my lists". Unlike subscribeToLists
+  // above, `id` is a plain column here, so — unlike the no-filter "owner or
+  // member" case — this CAN be filtered server-side to exactly this row.
+  // That also means no isRealMembershipChange-style guard is needed: RLS
+  // scopes who receives this row's events to whoever could already read it
+  // via getList() (owner, member, or pending invitee — see has_pending_invite
+  // in schema.sql), so this subscription can't leak anything the initial
+  // fetch didn't already allow.
+  subscribeToList(
+    listId: string,
+    onChange: (change: ListChange) => void,
+    onReconnect: () => void,
+  ): RealtimeChannel {
+    return this.supabaseService.client
+      .channel(`lists:detail:${listId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lists', filter: `id=eq.${listId}` },
+        (payload: RealtimePostgresChangesPayload<List>) => {
+          const eventType = payload.eventType;
+          const item = (eventType === 'DELETE' ? payload.old : payload.new) as List;
+          onChange({ eventType, item });
+        },
+      )
+      .subscribe(createReconnectHandler(onReconnect));
+  }
+
   // Gaining access to a list (approved join request, accepted invite) is an
   // INSERT on `memberships`, not on `lists` — the list row itself doesn't
-  // change, so subscribeToLists() above never fires for it. Filtered by
-  // user_id (a plain column, like membership_requests) so this only reacts
-  // to the current user's own new memberships. Only INSERT is handled:
-  // memberships rows are otherwise immutable in the app as it stands today
-  // (no leave/remove-member UI yet — that's Stage 6).
+  // change, so subscribeToLists() above never fires for it. Losing access
+  // (leave_list, or the future "remove member") is symmetrically a DELETE on
+  // `memberships` rather than anything on `lists` either — the list keeps
+  // existing for everyone else. Both are filtered by user_id (a plain
+  // column, like membership_requests) so this only reacts to the current
+  // user's own membership rows; UPDATE is never handled because memberships
+  // rows are never updated anywhere in the app (only inserted on
+  // join/accept/approve, deleted on leave).
   subscribeToMyMemberships(
-    onNewMembership: (listId: string) => void,
+    onChange: (change: MyMembershipChange) => void,
     onReconnect: () => void,
   ): RealtimeChannel {
     const userId = this.authService.user()?.id ?? null;
@@ -164,9 +199,14 @@ export class ListService {
       .channel(`memberships:mine:${userId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'memberships', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'memberships', filter: `user_id=eq.${userId}` },
         (payload: RealtimePostgresChangesPayload<Membership>) => {
-          onNewMembership((payload.new as Membership).list_id);
+          const eventType = payload.eventType;
+          if (eventType !== 'INSERT' && eventType !== 'DELETE') {
+            return;
+          }
+          const row = (eventType === 'DELETE' ? payload.old : payload.new) as Membership;
+          onChange({ eventType, listId: row.list_id });
         },
       )
       .subscribe(createReconnectHandler(onReconnect));
