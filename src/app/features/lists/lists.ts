@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../core/auth.service';
+import { InvitationService, PendingInvitation } from '../../core/invitation.service';
 import { List, ListChange, ListService } from '../../core/list.service';
 import { ConfirmModal } from '../../shared/confirm-modal/confirm-modal';
 import { LogoutButton } from '../auth/logout-button/logout-button';
@@ -17,12 +18,27 @@ import { Autofocus } from './autofocus.directive';
 export class Lists implements OnDestroy {
   private readonly listService = inject(ListService);
   private readonly authService = inject(AuthService);
+  private readonly invitationService = inject(InvitationService);
   private listsChannel: RealtimeChannel | null = null;
   private membershipsChannel: RealtimeChannel | null = null;
+  private invitationsChannel: RealtimeChannel | null = null;
 
   protected readonly lists = signal<List[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly loadError = signal<string | null>(null);
+
+  // Own subscription rather than sharing the one InvitationsComponent uses:
+  // the two are separate component instances on separate routes (never
+  // mounted at once in the same tab), so there's no live instance to share
+  // without lifting this into app-level singleton state — a bigger change
+  // than a badge counter justifies. Keeps the same per-screen
+  // subscribe/unsubscribe pattern already used everywhere else (Lists,
+  // ListDetail, ListInvite, Invitations). The count is derived from the
+  // same array + mergeMyInvitationsChange the /invitations screen uses,
+  // rather than a hand-rolled increment/decrement counter, so it stays
+  // correct across inserts, deletes and reconnect refetches for free.
+  protected readonly pendingInvitations = signal<PendingInvitation[]>([]);
+  protected readonly pendingInvitationsCount = computed(() => this.pendingInvitations().length);
 
   protected readonly isCreating = signal(false);
   protected readonly createError = signal<string | null>(null);
@@ -44,6 +60,8 @@ export class Lists implements OnDestroy {
     this.loadLists();
     this.subscribeToLists();
     this.subscribeToMemberships();
+    this.loadPendingInvitationsCount();
+    this.subscribeToInvitationsCount();
   }
 
   ngOnDestroy(): void {
@@ -55,6 +73,31 @@ export class Lists implements OnDestroy {
       this.listService.unsubscribeFromMemberships(this.membershipsChannel);
       this.membershipsChannel = null;
     }
+    if (this.invitationsChannel) {
+      this.invitationService.unsubscribeFromMembershipRequests(this.invitationsChannel);
+      this.invitationsChannel = null;
+    }
+  }
+
+  private async loadPendingInvitationsCount(): Promise<void> {
+    const { data, error } = await this.invitationService.getMyPendingInvitations();
+
+    if (error) {
+      return;
+    }
+
+    this.pendingInvitations.set(data ?? []);
+  }
+
+  private subscribeToInvitationsCount(): void {
+    this.invitationsChannel = this.invitationService.subscribeToMyInvitations(
+      (change) => {
+        this.pendingInvitations.update((current) =>
+          this.invitationService.mergeMyInvitationsChange(current, change),
+        );
+      },
+      () => this.loadPendingInvitationsCount(),
+    );
   }
 
   private subscribeToLists(): void {

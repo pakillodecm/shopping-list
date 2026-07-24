@@ -27,7 +27,20 @@
   </form>
 
   <a routerLink="/join" class="btn btn-secondary secondary-nav-link">Unirme a una lista con un código</a>
-  <a routerLink="/invitations" class="btn btn-secondary secondary-nav-link">Ver mis invitaciones</a>
+  <a
+    routerLink="/invitations"
+    class="btn btn-secondary secondary-nav-link invitations-link"
+    [attr.aria-label]="
+      pendingInvitationsCount() > 0
+        ? 'Ver mis invitaciones, ' + pendingInvitationsCount() + ' pendientes'
+        : null
+    "
+  >
+    Ver mis invitaciones
+    @if (pendingInvitationsCount() > 0) {
+      <span class="invitations-badge" aria-hidden="true">{{ pendingInvitationsCount() }}</span>
+    }
+  </a>
 
   @if (isLoading()) {
     <p class="lists-status">Cargando tus listas…</p>
