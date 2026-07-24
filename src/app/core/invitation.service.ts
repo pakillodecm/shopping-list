@@ -1,5 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type {
+  PostgrestError,
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+} from '@supabase/supabase-js';
 
 import { AuthService } from './auth.service';
 import { mergeChange } from './merge-change';
@@ -72,6 +76,17 @@ export class InvitationService {
     return this.supabaseService.client
       .rpc('request_to_join_by_code', { p_code: code })
       .single<InviteResult>();
+  }
+
+  // Read-only lookup used by QR scanning (RF-15, DT-9) to show "join list
+  // 'X'?" before the user commits — get_list_name_by_code is a scalar-
+  // returning SQL function, so unlike the table-returning RPCs above it
+  // needs no .single(): PostgREST already returns the bare text value (or
+  // null if the code doesn't exist) as `data`.
+  getListNameByCode(
+    code: string,
+  ): PromiseLike<{ data: string | null; error: PostgrestError | null }> {
+    return this.supabaseService.client.rpc('get_list_name_by_code', { p_code: code });
   }
 
   acceptInvitation(requestId: string) {

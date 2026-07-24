@@ -99,6 +99,73 @@
   color: var(--color-text-muted);
 }
 
+.qr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.qr-video-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background-color: #000;
+  aspect-ratio: 3 / 4;
+}
+
+.qr-video-wrap ngx-scanner-qrcode {
+  display: block;
+  height: 100%;
+}
+
+.qr-status {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.camera-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.camera-switch select {
+  flex: 1;
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.qr-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.qr-confirm p {
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.qr-confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.qr-confirm-actions .btn {
+  flex: 1;
+}
+
 /* Wider viewports: constrain to a comfortable reading width. */
 @media (min-width: 600px) {
   .join-list-page {

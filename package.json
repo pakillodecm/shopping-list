@@ -23,6 +23,7 @@
     "@angular/service-worker": "^22.0.0",
     "@supabase/supabase-js": "^2.110.7",
     "ng-qrcode": "^22.0.0",
+    "ngx-scanner-qrcode": "^1.8.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

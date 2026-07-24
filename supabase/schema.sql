@@ -600,6 +600,24 @@ using (
   public.has_pending_invite(id)
 );
 
+-- Stage 5 (QR scan): lets any authenticated user look up a list's name by
+-- invitation code before deciding whether to request to join (RF-15, DT-9) —
+-- confirmation copy ("¿Quieres unirte a la lista 'X'?") needs the name, but
+-- the requester isn't a member yet so the base "owner or member" RLS policy
+-- on lists doesn't grant them a row. Same security-definer pattern as
+-- is_list_member/has_pending_invite: bypasses RLS deliberately, but the
+-- surface is intentionally tiny (only the name, not the full row) since it
+-- must be safe for any authenticated user, not just the eventual member.
+create function public.get_list_name_by_code(p_code text)
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select name from public.lists where invitation_code = upper(p_code);
+$$;
+
 
 -- ----------------------------------------------------------------------------
 -- products (catalog — Phase 2, empty in MVP) + list_items

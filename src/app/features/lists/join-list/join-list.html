@@ -64,6 +64,109 @@
       </button>
     </form>
   } @else {
-    <p class="join-list-status">Escanear código QR — próximamente.</p>
+    <div class="qr-panel">
+      <div class="qr-video-wrap" [hidden]="!cameraVisible()">
+        <ngx-scanner-qrcode
+          #scanner="scanner"
+          [config]="scannerConfig"
+          (event)="onScan($event)"
+        ></ngx-scanner-qrcode>
+      </div>
+
+      @switch (qrState()) {
+        @case ('starting') {
+          <p class="qr-status" role="status">Iniciando cámara…</p>
+        }
+        @case ('scanning') {
+          <p class="qr-status">Apunta la cámara al código QR de la lista.</p>
+
+          @if (availableDevices().length > 1) {
+            <div class="camera-switch">
+              <label for="camera-select">Cámara</label>
+              <select id="camera-select" (change)="switchCamera($event)">
+                @for (device of availableDevices(); track device.deviceId) {
+                  <option [value]="device.deviceId">{{ device.label || 'Cámara' }}</option>
+                }
+              </select>
+            </div>
+          }
+        }
+        @case ('looking-up') {
+          <p class="qr-status" role="status">Comprobando código…</p>
+        }
+        @case ('unavailable') {
+          <p class="alert alert-danger" role="alert">
+            No se puede acceder a la cámara. Puede que hayas denegado el permiso o que este
+            dispositivo no tenga cámara disponible. Usa la pestaña "Introducir código" para unirte
+            igualmente.
+          </p>
+        }
+        @case ('invalid-code') {
+          <p class="alert alert-danger" role="alert">{{ qrLookupErrorMessage() }}</p>
+          <button
+            #invalidRescanButton
+            type="button"
+            class="btn btn-secondary"
+            (click)="rescan()"
+          >
+            Volver a escanear
+          </button>
+        }
+        @case ('confirming') {
+          <div class="qr-confirm">
+            <p>¿Quieres solicitar unirte a la lista «{{ scannedListName() }}»?</p>
+
+            @if (joinError()) {
+              <p class="alert alert-danger" role="alert">{{ joinError() }}</p>
+            }
+
+            <div class="qr-confirm-actions">
+              <button
+                #confirmButton
+                type="button"
+                class="btn btn-primary"
+                [disabled]="isJoining()"
+                (click)="confirmJoinFromQr()"
+              >
+                {{ isJoining() ? 'Enviando…' : 'Solicitar unirme' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="isJoining()"
+                (click)="cancelQrConfirm()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+        @case ('result') {
+          @if (joinError()) {
+            <p class="alert alert-danger" role="alert">{{ joinError() }}</p>
+          }
+
+          @if (joinResult(); as result) {
+            <p
+              class="alert"
+              [class.alert-success]="!result.alreadyPending"
+              [class.alert-warning]="result.alreadyPending"
+              role="status"
+            >
+              {{ result.message }}
+            </p>
+          }
+
+          <button
+            #resultRescanButton
+            type="button"
+            class="btn btn-secondary"
+            (click)="rescan()"
+          >
+            Escanear otro código
+          </button>
+        }
+      }
+    </div>
   }
 </div>

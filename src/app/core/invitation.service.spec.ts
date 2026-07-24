@@ -145,6 +145,45 @@ describe('InvitationService', () => {
     });
   });
 
+  describe('getListNameByCode', () => {
+    it('calls the get_list_name_by_code RPC with the code', async () => {
+      setup();
+
+      await service.getListNameByCode('ABC234');
+
+      expect(supabaseServiceMock.client.rpc).toHaveBeenCalledWith('get_list_name_by_code', {
+        p_code: 'ABC234',
+      });
+    });
+
+    it('returns the list name Supabase gives back', async () => {
+      setup({ data: 'Compra semanal', error: null });
+
+      const result = await service.getListNameByCode('ABC234');
+
+      expect(result.data).toBe('Compra semanal');
+      expect(result.error).toBeNull();
+    });
+
+    it('returns null data when the code does not match any list', async () => {
+      setup({ data: null, error: null });
+
+      const result = await service.getListNameByCode('BADCOD');
+
+      expect(result.data).toBeNull();
+      expect(result.error).toBeNull();
+    });
+
+    it('propagates an error without transforming it', async () => {
+      const error = { message: 'network error' };
+      setup({ data: null, error });
+
+      const result = await service.getListNameByCode('ABC234');
+
+      expect(result.error).toEqual(error);
+    });
+  });
+
   describe('acceptInvitation', () => {
     it('calls the accept_invitation RPC with the request id', async () => {
       setup();
