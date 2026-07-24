@@ -3,7 +3,13 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../../core/auth.service';
-import { List, ListChange, ListMember, ListService } from '../../../core/list.service';
+import {
+  List,
+  ListChange,
+  ListMember,
+  ListMembershipChange,
+  ListService,
+} from '../../../core/list.service';
 import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
 
 @Component({
@@ -20,6 +26,7 @@ export class ListMembers implements OnDestroy {
   protected readonly listId = this.route.snapshot.paramMap.get('id');
   private listChannel: RealtimeChannel | null = null;
   private membershipsChannel: RealtimeChannel | null = null;
+  private listMembersChannel: RealtimeChannel | null = null;
 
   private readonly noAccessErrorMessage =
     'No se ha podido cargar esta lista. Puede que no exista o que no tengas acceso.';
@@ -45,6 +52,7 @@ export class ListMembers implements OnDestroy {
     this.loadMembers();
     this.subscribeToListChanges();
     this.subscribeToOwnMembership();
+    this.subscribeToListMembersChanges();
   }
 
   ngOnDestroy(): void {
@@ -55,6 +63,10 @@ export class ListMembers implements OnDestroy {
     if (this.membershipsChannel) {
       this.listService.unsubscribeFromMemberships(this.membershipsChannel);
       this.membershipsChannel = null;
+    }
+    if (this.listMembersChannel) {
+      this.listService.unsubscribeFromMemberships(this.listMembersChannel);
+      this.listMembersChannel = null;
     }
   }
 
@@ -150,13 +162,11 @@ export class ListMembers implements OnDestroy {
   // Reacts to the current viewer's OWN access to this exact list being
   // revoked while they're looking at this page — either they left from
   // another device, or the owner just expelled them from a different tab.
-  // Reuses ListService.subscribeToMyMemberships (built for the same gap on
-  // /lists) rather than a new list_id-filtered "any membership on this
-  // list" subscription: seeing OTHER members join/leave live here would be
-  // a nice-to-have, but not a correctness issue — trying to expel someone
-  // who already left just surfaces the existing "not a member" error from
-  // remove_member below, the same way leave_list's own successor race
-  // condition is handled.
+  // Kept separate from subscribeToListMembersChanges below (rather than
+  // having that one also special-case "is this row about me?"): this one is
+  // about MY page access (loadError/list), that one is about the roster
+  // contents (members()) — different concerns, even though both ultimately
+  // read the same memberships table.
   private subscribeToOwnMembership(): void {
     if (!this.listId) {
       return;
@@ -181,6 +191,57 @@ export class ListMembers implements OnDestroy {
       },
       () => this.fetchAndApply(),
     );
+  }
+
+  // Any join or removal on this list, from anyone, so the roster stays live
+  // while this screen is open — the one piece of Realtime deliberately left
+  // out when this screen first shipped (seeing it wasn't a correctness
+  // issue, just staleness), added now for consistency with how every other
+  // list-scoped view (items, pending requests) already behaves live.
+  // list_id is a plain column, so this filters server-side exactly like
+  // subscribeToListRequests/subscribeToItems already do.
+  private subscribeToListMembersChanges(): void {
+    if (!this.listId) {
+      return;
+    }
+    const listId = this.listId;
+
+    this.listMembersChannel = this.listService.subscribeToListMembers(
+      listId,
+      (change) => void this.handleMembershipChange(listId, change),
+      () => this.fetchAndApply(),
+    );
+  }
+
+  // A postgres_changes INSERT payload only ever carries the memberships
+  // row's own columns — never the profile:profiles(...) embed, which is a
+  // PostgREST-time join Realtime doesn't know about — so a new member needs
+  // a targeted by-id refetch via getListMember before it can be shown here,
+  // same pattern as fetchPendingInvitationById in InvitationService.
+  private async handleMembershipChange(
+    listId: string,
+    change: ListMembershipChange,
+  ): Promise<void> {
+    if (change.eventType === 'DELETE') {
+      this.members.update((current) => current.filter((member) => member.user_id !== change.userId));
+      return;
+    }
+
+    const { data, error } = await this.listService.getListMember(listId, change.userId);
+
+    if (error || !data) {
+      return;
+    }
+
+    this.members.update((current) => {
+      if (current.some((member) => member.user_id === data.user_id)) {
+        return current;
+      }
+      // A brand-new member's joined_at is always later than everyone
+      // already loaded, so appending keeps the same joined_at-ascending
+      // order getListMembers() already loaded without re-sorting.
+      return [...current, data];
+    });
   }
 
   startRemoveMember(member: ListMember): void {

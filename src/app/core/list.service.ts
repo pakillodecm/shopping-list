@@ -49,6 +49,10 @@ export interface ListMember {
   profile: MemberProfile;
 }
 
+export type ListMembershipChange =
+  | { eventType: 'INSERT'; userId: string }
+  | { eventType: 'DELETE'; userId: string };
+
 @Injectable({ providedIn: 'root' })
 export class ListService {
   private readonly supabaseService = inject(SupabaseService);
@@ -141,6 +145,21 @@ export class ListService {
     return { data, error };
   }
 
+  // A single membership row, with its profile embed — used to fetch just
+  // the one member a realtime INSERT on `memberships` points at (see
+  // subscribeToListMembers below), since postgres_changes payloads only ever
+  // carry the changed table's own columns, never a PostgREST-time join like
+  // profile:profiles(...). Same targeted by-id refetch pattern as
+  // fetchPendingInvitationById/fetchPendingRequestById in InvitationService.
+  getListMember(listId: string, userId: string) {
+    return this.supabaseService.client
+      .from('memberships')
+      .select('user_id, joined_at, profile:profiles(username, first_name, last_name)')
+      .eq('list_id', listId)
+      .eq('user_id', userId)
+      .single<ListMember>();
+  }
+
   subscribeToLists(onChange: (change: ListChange) => void, onReconnect: () => void): RealtimeChannel {
     return this.supabaseService.client
       .channel('lists')
@@ -216,6 +235,36 @@ export class ListService {
           }
           const row = (eventType === 'DELETE' ? payload.old : payload.new) as Membership;
           onChange({ eventType, listId: row.list_id });
+        },
+      )
+      .subscribe(createReconnectHandler(onReconnect));
+  }
+
+  // Any membership change on one specific list, regardless of whose it is —
+  // for the /lists/:id/members roster screen, so joins and removals show up
+  // live for whoever else is looking at it, not just for the person it
+  // happened to (that's subscribeToMyMemberships above). list_id is a plain
+  // column, like list_items in Stage 4, so this filters server-side just
+  // like that one does. UPDATE is never handled for the same reason as
+  // subscribeToMyMemberships: memberships rows are never updated, only
+  // inserted or deleted.
+  subscribeToListMembers(
+    listId: string,
+    onChange: (change: ListMembershipChange) => void,
+    onReconnect: () => void,
+  ): RealtimeChannel {
+    return this.supabaseService.client
+      .channel(`memberships:list:${listId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'memberships', filter: `list_id=eq.${listId}` },
+        (payload: RealtimePostgresChangesPayload<Membership>) => {
+          const eventType = payload.eventType;
+          if (eventType !== 'INSERT' && eventType !== 'DELETE') {
+            return;
+          }
+          const row = (eventType === 'DELETE' ? payload.old : payload.new) as Membership;
+          onChange({ eventType, userId: row.user_id });
         },
       )
       .subscribe(createReconnectHandler(onReconnect));
