@@ -8,6 +8,9 @@
   } @else {
     <div class="list-detail-header">
       <h1 class="list-detail-title">{{ list()?.name }}</h1>
+      <a [routerLink]="['/lists', listId, 'members']" class="btn btn-secondary">
+        Ver miembros de esta lista
+      </a>
       @if (isOwner()) {
         <a
           [routerLink]="['/lists', listId, 'invite']"

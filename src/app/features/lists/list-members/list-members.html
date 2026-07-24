@@ -1,0 +1,57 @@
+<div class="list-members-page">
+  <a [routerLink]="['/lists', listId]" class="back-link">← Volver a la lista</a>
+
+  @if (isLoading()) {
+    <p class="list-members-status">Cargando…</p>
+  } @else if (loadError()) {
+    <p class="alert alert-danger" role="alert">{{ loadError() }}</p>
+  } @else {
+    <h1 class="list-members-title">Miembros de "{{ list()?.name }}"</h1>
+
+    <ul class="member-list">
+      @for (member of members(); track member.user_id) {
+        <li class="member-item">
+          <div class="member-info">
+            <span class="member-name">
+              {{ member.profile.first_name }} {{ member.profile.last_name }}
+              @if (member.user_id === list()?.owner_id) {
+                <span class="owner-badge">Propietario</span>
+              }
+            </span>
+            <span class="member-username">&#64;{{ member.profile.username }}</span>
+          </div>
+          @if (isOwner() && member.user_id !== list()?.owner_id) {
+            <button
+              type="button"
+              class="btn btn-secondary member-action"
+              (click)="startRemoveMember(member)"
+              [disabled]="isRemoving()"
+              [attr.aria-label]="'Expulsar a ' + member.profile.first_name + ' ' + member.profile.last_name"
+            >
+              Expulsar
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (removingMember(); as member) {
+    <app-confirm-modal
+      title="Expulsar miembro"
+      [message]="
+        '¿Seguro que quieres expulsar a ' +
+        member.profile.first_name +
+        ' ' +
+        member.profile.last_name +
+        ' de esta lista?'
+      "
+      confirmText="Sí, expulsar"
+      cancelText="No"
+      [errorMessage]="removeError()"
+      [busy]="isRemoving()"
+      (confirmed)="confirmRemoveMember(member)"
+      (cancelled)="cancelRemoveMember()"
+    />
+  }
+</div>

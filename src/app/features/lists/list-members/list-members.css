@@ -1,0 +1,103 @@
+.list-members-page {
+  width: 100%;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: var(--space-lg);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.list-members-title {
+  font-size: var(--font-size-xl);
+  margin: 0 0 var(--space-lg) 0;
+}
+
+.list-members-status {
+  color: var(--color-text-muted);
+}
+
+.alert {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.alert-danger {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.member-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.member-username {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.6;
+}
+
+.member-action {
+  flex-shrink: 0;
+  min-height: 36px;
+}
+
+/* Wider viewports: constrain to a comfortable reading width. */
+@media (min-width: 600px) {
+  .list-members-page {
+    max-width: 480px;
+  }
+}

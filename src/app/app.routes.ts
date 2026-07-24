@@ -27,6 +27,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'lists/:id/members',
+    loadComponent: () =>
+      import('./features/lists/list-members/list-members').then((m) => m.ListMembers),
+    canActivate: [authGuard],
+  },
+  {
     path: 'join',
     loadComponent: () => import('./features/lists/join-list/join-list').then((m) => m.JoinList),
     canActivate: [authGuard],
