@@ -27,9 +27,9 @@ A shared family shopping-list app: real-time sync across devices, PWA (Android +
 - **Security:** Postgres Row Level Security (RLS), integrated with `auth.uid()`.
 - **Theming:** CSS variables (design tokens) from the start; light/dark selector in MVP.
 - **Layout:** mobile-first (RNF-10). Real usage happens on a phone, often one-handed in a supermarket. Design for a narrow viewport first, then adapt upward. Touch targets must be comfortably tappable, not sized for a mouse cursor. Default to stacking content vertically rather than multi-column layouts.
-- **Testing:** Vitest (added when the first test is written, in Stage 1).
+- **Testing:** Vitest.
 - **Package manager:** npm.
-- **Hosting:** Cloudflare Pages.
+- **Hosting:** Cloudflare Pages, with automatic preview deployments enabled for all non-production branches (useful for testing features that require HTTPS, like camera access, before merging to `main`).
 - **Availability:** scheduled GitHub Actions ping to avoid Supabase free-tier pause.
 
 ## Language conventions
@@ -62,7 +62,7 @@ Example: `feat: add username uniqueness check on registration`.
 - Install dependencies: `npm install`
 - Dev server: `npm start`  (alias of `ng serve`)
 - Build: `npm run build`  (alias of `ng build`)
-- Test: `npm test`  (Vitest, once configured)
+- Test: `npm test`  (Vitest)
 - Lint: `npm run lint`
 
 Run lint and the test suite before considering any task done.
@@ -93,21 +93,28 @@ Do not jump ahead. Finish, test, and get approval for a stage before starting th
 
 ## Current stage
 
-> **Stage 4 — Real-time is complete.** Stage 2 (Lists) is complete: ListService (create/list/rename/delete via RLS-backed queries plus the create_list_with_owner RPC), the /lists screen (create, view, inline rename, delete via a reusable ConfirmModal with full focus-trap accessibility), route '' redirects to /lists, /lists/:id placeholder ready for Stage 3, and two RLS/database fixes discovered along the way: recursive RLS policy on memberships (fixed via a security-definer helper function) and missing table GRANTs for the authenticated role (tables were created by hand in the SQL Editor, bypassing the Table Editor's automatic grants). Full navigation flow (login/register/logout/create/rename/delete) verified end-to-end in the browser.
+> **Stage 5 — Invitations is complete.** Stages 0-4 (Foundations, Auth, Lists, Items, Real-time) are done and stable — see git history for their detailed closing notes if needed.
 >
-> Stage 3 (Items) is complete too: ItemService (add/check-uncheck/edit/delete via direct RLS-backed queries on `list_items`), the /lists/:id screen fully built out (add item, optimistic check/uncheck with rollback on error, inline text edit, delete via ConfirmModal), all verified end-to-end in the browser.
+> **Stage 5 (Invitations)**, both backend and frontend, is complete and verified end-to-end with two real user accounts:
 >
-> Stage 4 (Real-time) is complete: a shared, pure `mergeChange<T>()` helper (`src/app/core/merge-change.ts`, `id` + `modified_at` based, dedupes/orders INSERT/UPDATE/DELETE) is used by both `ItemService.mergeItemChange` and `ListService.mergeListChange`. `list_items` and `lists` both emit Realtime `postgres_changes` (added to the `supabase_realtime` publication, `REPLICA IDENTITY FULL` on both — required for DELETE events to carry the columns RLS/filters need, discovered while testing `list_items` deletes not propagating). `list_items` subscriptions filter by `list_id`; `lists` subscriptions intentionally use **no filter** and rely on Realtime evaluating the "owner or member" RLS policy per subscriber — verified explicitly with an unrelated third account that never received events for a list it had no access to. A shared `createReconnectHandler` (`src/app/core/realtime-reconnect.ts`) detects a channel coming back to `SUBSCRIBED` after having been down and triggers a full refetch (not a merge) in both `ListDetail` and `Lists`, verified with a real simulated network drop (`browserContext.setOffline`). RNF-06 (perceived-as-immediate sync) was measured, not assumed: see the verification note under "Hard constraints" #3 in `docs/ai-source-of-truth.md` (sub-second, ~660 ms average across 12 real cross-tab measurements).
+> - `InvitationService` wraps all invitation/request RPCs (invite by username/email, request by code, accept/reject, approve/deny) plus read queries (`getMyPendingInvitations`, `getPendingRequestsForList`) with profile/list embeds via PostgREST joins.
+> - `/lists/:id/invite` (owner-only): shows the list's `invitation_code` + QR (via `ng-qrcode`), lets the owner regenerate the code (`regenerate_invitation_code` RPC, built this stage), invite by username/email, and review/approve/deny pending join requests for that list — with a live badge counting pending requests.
+> - `/invitations`: shows invitations received by the current user, accept/reject, with a live badge on `/lists` counting them.
+> - `/lists/join`: join a list either by typing its code or by scanning its QR with the device camera (`ngx-scanner-qrcode` — chosen over `@zxing/ngx-scanner` because its underlying decoder, ZBar via the mchehab/zbar fork, is actively maintained, unlike zxing-js which is "maintainer wanted"). Scanning shows a confirmation panel with the list's name (via a new read-only `get_list_name_by_code` RPC) before submitting the join request. Handles the three camera-permission states explicitly (granted/prompt/denied), including a pre-prompt explanation screen and a `navigator.permissions.query` check with safe degradation for Safari/iOS, where permission persistence is known to be unreliable (unlike Chrome/Android, where it's solid). A real camera-permission race condition (device enumeration racing the permission prompt and the library's own WASM load) was found and fixed by sequencing `getUserMedia` → device enumeration → camera selection manually, instead of relying on the library's own `start()` helper.
+> - `invite_user_to_list` and `request_to_join_by_code` both had to change from `returns <table>` to `returns table (..., already_pending boolean)` mid-stage: the original design (returning the existing row when a pending request already exists) was indistinguishable in shape from a freshly-created row when the origin matched, so the frontend couldn't tell "just invited" from "already pending" (CA-10.4/CA-13.4) without this explicit flag.
+> - Realtime extended to `membership_requests` (own publication + `REPLICA IDENTITY FULL`, same reasoning as `list_items`/`lists` in Stage 4) and to `memberships` (`INSERT`-only subscription filtered by `user_id`) — needed because gaining list access via an approved/accepted request is an insert on `memberships`, not a change on `lists`; the list row itself never changes, so `ListsComponent` would otherwise stay stale until a manual reload.
+> - Two real security/visibility bugs were found and fixed during this stage:
+>   1. A new RLS policy (`has_pending_invite`, `security definer`) was added so an invitee can read a list's `name` before accepting — but `ListService.getMyLists()` was doing a filterless `select * from lists`, trusting RLS alone to scope "my lists". Once RLS legitimately started allowing reads for a third reason (pending invite), that query started leaking pending-invite lists into `/lists` as if the user were already a member (items stayed protected — `list_items` RLS is independent — but the list row itself, including its `invitation_code`, was visible). Fixed by querying `memberships` explicitly (by `user_id`) instead of trusting the broadened `lists` SELECT policy.
+>   2. The same leak had a live-update path too: `ListsComponent`'s Realtime subscription on `lists` has no filter (can't be expressed as one) and merges any `UPDATE`/`DELETE` it receives — so an owner editing a list while someone had a pending invite to it would push that list into the invitee's `/lists` via Realtime, even after the fetch-level fix. Fixed with a guard (`isRealMembershipChange`) that only applies a `lists` Realtime event if it's a DELETE, the current user owns the row, or the list was already known locally.
+> - Ahead-of-schedule work done this stage (per the Build order exception above): `REPLICA IDENTITY FULL` was set on `memberships` even though the current `INSERT`-only subscription doesn't strictly need it, to avoid hitting the same silent-DELETE-drop bug a fourth time once Stage 6 starts deleting membership rows.
 >
-> **Ahead-of-schedule database work (see Build order exception below):** `supabase/schema.sql` already includes the Stage 5 invitation RPC functions — `invite_user_to_list`, `request_to_join_by_code`, `accept_invitation`, `reject_invitation`, `approve_join_request`, `deny_join_request` — built and correct at the database level (RLS + `security definer`, symmetric one-pending-request rule enforced via a unique constraint). **None of this is wired into the frontend yet** — no services, no components, no routes reference these functions. Stage 5 still needs its full UI (invite by username/email, accept/reject, code/QR generation and scanning, approve/deny) built from scratch; only its backend groundwork exists.
->
-> Next up: **Stage 5 — Invitations** (UI only; backend already exists as noted above).
+> Next up: **Stage 6 — Transfer & exit** (leave list, ownership transfer, sole-owner deletion with confirmation).
 >
 > (Update this line as the project progresses so every session knows where we are.)
 
 ## Git workflow
 
-Starting from Stage 1, work on a feature branch per stage (e.g. `feature/auth`, `feature/lists`), not directly on `main`. Merge back to `main` when the stage is finished and working. Stage 0 was done directly on `main`, which is fine for initial scaffolding.
+Work on a feature branch per stage (e.g. `feature/auth`, `feature/lists`, `feature/invitations`), not directly on `main`. Merge back to `main` when the stage is finished and working. Stage 0 was done directly on `main`, which is fine for initial scaffolding. Small fixes to an already-closed stage (a typo, a doc sync, a one-off bug not tied to a new stage) can go directly on `main` without a dedicated branch — reserve branches for a full stage's worth of work.
 
 ### Task-by-task rhythm (always follow this)
 
@@ -117,22 +124,25 @@ Starting from Stage 1, work on a feature branch per stage (e.g. `feature/auth`, 
 4. The user commits it themselves (see rule 8 above) with a Conventional Commit scoped to that one task.
 5. Only after that commit exists does work start on the next task.
 
-Never propose or start a second task while the previous one is still uncommitted. If the user asks for something broad ("build the invitations flow"), break it down into this same one-task-at-a-time sequence rather than doing it all at once.
+Never propose or start a second task while the previous one is still uncommitted. If the user asks for something broad ("build the invitations flow"), break it down into this same one-task-at-a-time sequence rather than doing it all at once. Do not assume prior work is still uncommitted once the user has confirmed a commit — only treat something as pending if they say so explicitly.
 
 ## Project structure
 
-- `src/app/core/` — app-wide singleton services and guards: `supabase.service.ts`, `auth.service.ts`, `auth.guard.ts`, `guest.guard.ts`, `list.service.ts`.
+- `src/app/core/` — app-wide singleton services and guards: `supabase.service.ts`, `auth.service.ts`, `auth.guard.ts`, `guest.guard.ts`, `list.service.ts`, `item.service.ts`, `invitation.service.ts`, `merge-change.ts` (generic `mergeChange<T extends { id; modified_at }>()` used by `ItemService`/`ListService`/`InvitationService` to apply Realtime INSERT/UPDATE/DELETE events without duplicates or stale overwrites), `realtime-reconnect.ts` (shared `createReconnectHandler`, triggers a full refetch when a channel comes back up after being down).
 - `src/app/features/auth/` — `auth-form.css` (shared styles for login/register), plus `register/`, `login/`, `logout-button/`.
-- `src/app/features/lists/` — the `/lists` screen: create, view, inline rename, delete (via ConfirmModal). No longer a temporary screen — this is the real landing screen for a logged-in user.
-- `src/app/features/lists/list-detail/` — placeholder for `/lists/:id`, to be built out in Stage 3.
-- `src/app/shared/confirm-modal/` — reusable accessible confirmation modal (focus trap, Escape/backdrop dismiss, `alertdialog` role) for any destructive action across the app. Use this instead of building a new confirmation pattern per feature.
+- `src/app/features/lists/` — the `/lists` screen: create, view, inline rename, delete (via ConfirmModal), plus a live badge for pending invitations received. This is the real landing screen for a logged-in user.
+- `src/app/features/lists/list-detail/` — `/lists/:id`: real items screen (add, optimistic check/uncheck with rollback on error, inline text edit, delete via ConfirmModal), plus a pending-join-requests badge (owner-only) linking to `/lists/:id/invite`.
+- `src/app/features/lists/list-invite/` — `/lists/:id/invite` (owner-only): invitation code + QR display, regenerate code, invite by username/email, review/approve/deny pending join requests.
+- `src/app/features/lists/join-list/` — `/lists/join`: join a list by typing its code or scanning its QR with the camera (`ngx-scanner-qrcode`).
+- `src/app/features/invitations/` — `/invitations`: review and accept/reject invitations received by the current user.
+- `src/app/shared/confirm-modal/` — reusable accessible confirmation modal (focus trap, Escape/backdrop dismiss, `alertdialog` role) for destructive actions specifically (its confirm button is styled `btn-danger`). For non-destructive confirmations (e.g. confirming a join request after a QR scan), build a lighter inline panel instead — don't force this component's red styling onto a neutral action.
 - `src/app/app.ts` / `app.html` — root component: just `router-outlet`.
 - `src/app/app.routes.ts` — route definitions. `''` redirects to `/lists`.
 - `src/environments/` — gitignored except `environment.example.ts`.
 - `src/styles.css` — design tokens (theming) + global resets + shared `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-danger` button styles used across features.
 - `docs/` — `ai-source-of-truth.md`, `planning.md`.
-- `scripts/generate-env.js` — generates `environment.ts` from env vars, run before start/build.
-- `supabase/schema.sql` — versioned copy of the DB schema (tables, functions, triggers, RLS policies, and `GRANT`s), matching what's applied by hand in the Supabase SQL Editor.
+- `scripts/generate-env.js` — generates `environment.ts` from env vars before start/build. Reads from a local `.env` file via `dotenv` if one exists (local dev); otherwise reads directly from `process.env` (CI/Cloudflare Pages, where there is no `.env` file — only pipeline-injected environment variables).
+- `supabase/schema.sql` — versioned copy of the DB schema (tables, functions, triggers, RLS policies, and `GRANT`s), matching what's applied by hand in the Supabase SQL Editor. Not wired to any migration runner — SQL changes must be run manually in the dashboard and then mirrored here.
 
 ## Key domain reminders (full detail in the source of truth)
 
@@ -140,9 +150,14 @@ Never propose or start a second task while the previous one is still uncommitted
 - Exactly one owner per list at all times.
 - `MembershipRequest` has **no status field** — the row's existence means "pending"; resolving it deletes the row. Field `origin` is `INVITE` | `REQUEST`.
 - At most one pending request per (user, list), regardless of origin (symmetric rule — see source of truth).
-- `invitation_code`: 6 chars, uppercase + digits, excluding ambiguous O/I/L/0/1; auto-generated on list creation; lives as a field on the list.
+- `invitation_code`: 6 chars, uppercase + digits, excluding ambiguous O/I/L/0/1; auto-generated on list creation; lives as a field on the list (not a separate entity).
 - `username`: unique, case-insensitive, 3–20 chars, letters/digits/underscore, must start with a letter.
 - Deleting a list cascades to its items, memberships, and requests.
 - Supabase Auth's "Confirm email" setting must stay OFF in the project dashboard (Authentication → Providers → Email) — the MVP has no email verification flow, and leaving it on locks new users out with an `email_not_confirmed` error.
 - Any new table created by hand in the SQL Editor (not via the Table Editor UI) needs explicit `GRANT` statements for the `authenticated` role, matching exactly what its RLS policies allow — `GRANT` and RLS are independent layers in Postgres; without the `GRANT`, requests are rejected before RLS is even evaluated.
-- Watch for self-referential RLS policies (a policy on table X whose condition queries table X itself) — this can trigger `42P17` infinite recursion in Postgres. If a policy needs to check membership/relationship data from the same table it protects, use a `security definer` helper function instead (see `is_list_member` in `supabase/schema.sql`).
+- Watch for self-referential RLS policies (a policy on table X whose condition queries table X itself) — this can trigger `42P17` infinite recursion in Postgres. If a policy needs to check membership/relationship data from the same table it protects, use a `security definer` helper function instead (see `is_list_member`, `has_pending_invite` in `supabase/schema.sql`).
+- When a Postgres function's return shape can be ambiguous between "created new" and "found existing" (same columns, same values otherwise), make that explicit with a boolean field (e.g. `already_pending`) rather than letting the frontend guess from timestamps or context — see `invite_user_to_list`/`request_to_join_by_code`.
+- `RETURNS TABLE (...)` functions implicitly turn every output column name into a PL/pgSQL variable visible through the whole function body — unqualified references to a column with the same name elsewhere (e.g. `id`, `list_id`) become ambiguous (`42702`). Always qualify with table aliases inside such functions.
+- Changing a function's return type requires `DROP FUNCTION` before `CREATE FUNCTION` — plain `CREATE OR REPLACE` fails with `42P13` if the shape changes, even if the name and arguments are identical.
+- If RLS is broadened on a table to serve one screen's need (e.g. letting an invitee read a list's name before accepting), audit every OTHER query and Realtime subscription on that same table — a filterless `select *` or an unfiltered Realtime merge that used to be implicitly scoped by the old policy can start leaking rows for the new reason RLS now allows, even though nothing in that other code changed.
+- Camera access in the browser requires a secure context (HTTPS or `localhost`) — testing over a local network IP (`http://192.168.x.x:4200`) will not work for camera features; use a Cloudflare Pages preview deployment (HTTPS) for real-device camera testing instead.
