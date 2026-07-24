@@ -270,7 +270,7 @@ $$;
 
 
 -- ----------------------------------------------------------------------------
--- Leave list & ownership transfer (Stage 6, HU-09)
+-- Leave list, ownership transfer & member removal (Stage 6, HU-09 / RF-08)
 -- ----------------------------------------------------------------------------
 
 -- Member leaves a list, with ownership transfer or sole-owner deletion.
@@ -378,6 +378,44 @@ end;
 $$;
 
 grant execute on function public.leave_list(uuid, uuid) to authenticated;
+
+-- Owner removes a member from a list (RF-08). Unlike leave_list, there's no
+-- ambiguity in the outcome to report back (always "that membership is
+-- gone"), so returns void is enough — same as accept_invitation/
+-- reject_invitation/approve_join_request/deny_join_request. Checks are
+-- ordered so each error is the most specific one that actually applies:
+-- permission first (no info leaked about p_user_id to a non-owner), then the
+-- self-removal guard (that's what leave_list is for), then membership itself.
+create function public.remove_member(p_list_id uuid, p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.lists l where l.id = p_list_id and l.owner_id = auth.uid()
+  ) then
+    raise exception 'Only the list owner can remove members';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'Use leave_list to remove yourself from a list';
+  end if;
+
+  if not exists (
+    select 1 from public.memberships m
+    where m.list_id = p_list_id and m.user_id = p_user_id
+  ) then
+    raise exception 'That user is not a member of this list';
+  end if;
+
+  delete from public.memberships m
+  where m.list_id = p_list_id and m.user_id = p_user_id;
+end;
+$$;
+
+grant execute on function public.remove_member(uuid, uuid) to authenticated;
 
 
 -- ----------------------------------------------------------------------------
