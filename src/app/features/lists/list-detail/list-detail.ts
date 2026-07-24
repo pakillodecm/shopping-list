@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../../core/auth.service';
+import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
 import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
@@ -19,15 +20,26 @@ export class ListDetail implements OnDestroy {
   private readonly listService = inject(ListService);
   private readonly itemService = inject(ItemService);
   private readonly authService = inject(AuthService);
+  private readonly invitationService = inject(InvitationService);
 
   protected readonly listId = this.route.snapshot.paramMap.get('id');
   private itemsChannel: RealtimeChannel | null = null;
+  private requestsChannel: RealtimeChannel | null = null;
 
   protected readonly list = signal<List | null>(null);
   protected readonly currentUserId = computed(() => this.authService.user()?.id ?? null);
   protected readonly isOwner = computed(
     () => this.list() !== null && this.list()?.owner_id === this.currentUserId(),
   );
+
+  // Owner-only, mirroring the "Invitar a esta lista" link itself: a
+  // non-owner has no RLS access to this list's REQUEST-origin
+  // membership_requests anyway, so loading/subscribing is gated on
+  // isOwner() to avoid a pointless query. A deliberate scope decision (not
+  // a per-list badge on /lists, only here) — see the invitations badge on
+  // ListsComponent for the same visual/a11y pattern reused verbatim.
+  protected readonly pendingRequests = signal<PendingRequest[]>([]);
+  protected readonly pendingRequestsCount = computed(() => this.pendingRequests().length);
   protected readonly items = signal<ListItem[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly loadError = signal<string | null>(null);
@@ -58,6 +70,10 @@ export class ListDetail implements OnDestroy {
     if (this.itemsChannel) {
       this.itemService.unsubscribeFromItems(this.itemsChannel);
       this.itemsChannel = null;
+    }
+    if (this.requestsChannel) {
+      this.invitationService.unsubscribeFromMembershipRequests(this.requestsChannel);
+      this.requestsChannel = null;
     }
   }
 
@@ -110,12 +126,39 @@ export class ListDetail implements OnDestroy {
 
     this.list.set(listResult.data);
 
+    if (this.isOwner()) {
+      this.loadPendingRequestsCount(this.listId);
+      this.subscribeToRequestsCount(this.listId);
+    }
+
     if (itemsResult.error) {
       this.loadError.set('No se han podido cargar los ítems de esta lista.');
       return;
     }
 
     this.items.set(itemsResult.data ?? []);
+  }
+
+  private async loadPendingRequestsCount(listId: string): Promise<void> {
+    const { data, error } = await this.invitationService.getPendingRequestsForList(listId);
+
+    if (error) {
+      return;
+    }
+
+    this.pendingRequests.set(data ?? []);
+  }
+
+  private subscribeToRequestsCount(listId: string): void {
+    this.requestsChannel = this.invitationService.subscribeToListRequests(
+      listId,
+      (change) => {
+        this.pendingRequests.update((current) =>
+          this.invitationService.mergeListRequestsChange(current, change),
+        );
+      },
+      () => this.loadPendingRequestsCount(listId),
+    );
   }
 
   async submitAddItem(event: SubmitEvent, textInput: HTMLInputElement): Promise<void> {

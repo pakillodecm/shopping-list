@@ -9,7 +9,20 @@
     <div class="list-detail-header">
       <h1 class="list-detail-title">{{ list()?.name }}</h1>
       @if (isOwner()) {
-        <a [routerLink]="['/lists', listId, 'invite']" class="btn btn-secondary">Invitar a esta lista</a>
+        <a
+          [routerLink]="['/lists', listId, 'invite']"
+          class="btn btn-secondary invite-link"
+          [attr.aria-label]="
+            pendingRequestsCount() > 0
+              ? 'Invitar a esta lista, ' + pendingRequestsCount() + ' solicitudes pendientes'
+              : null
+          "
+        >
+          Invitar a esta lista
+          @if (pendingRequestsCount() > 0) {
+            <span class="invitations-badge" aria-hidden="true">{{ pendingRequestsCount() }}</span>
+          }
+        </a>
       }
     </div>
 

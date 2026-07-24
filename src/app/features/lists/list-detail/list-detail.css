@@ -25,6 +25,27 @@
   margin-bottom: var(--space-lg);
 }
 
+.invite-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.invitations-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
 .list-detail-title {
   font-size: var(--font-size-xl);
   margin: 0;
