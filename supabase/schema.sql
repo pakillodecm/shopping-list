@@ -282,6 +282,16 @@ using (
 
 grant select on public.membership_requests to authenticated;
 
+-- Stage 5 (Realtime on invitations): membership_requests must emit
+-- postgres_changes events so /invitations and /lists/:id/invite update
+-- live. Same reasoning as list_items and lists in Stage 4: under the
+-- default replica identity, a DELETE's "old" row only carries the primary
+-- key, which isn't enough for a postgres_changes filter (list_id, user_id)
+-- or RLS evaluation to match it, so the event would be dropped silently.
+-- FULL includes every column in the old row, fixing that for deletes.
+alter publication supabase_realtime add table public.membership_requests;
+alter table public.membership_requests replica identity full;
+
 -- Owner invites a registered user by username or email (RF-10).
 -- Returns already_pending = true when a membership_requests row for this
 -- (user, list) pair already existed (of either origin) and was returned

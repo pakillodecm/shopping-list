@@ -1,5 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { QrCodeComponent } from 'ng-qrcode';
 
 import { AuthService } from '../../../core/auth.service';
@@ -13,11 +14,12 @@ import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
   templateUrl: './list-invite.html',
   styleUrl: './list-invite.css',
 })
-export class ListInvite {
+export class ListInvite implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly listService = inject(ListService);
   private readonly authService = inject(AuthService);
   private readonly invitationService = inject(InvitationService);
+  private requestsChannel: RealtimeChannel | null = null;
 
   protected readonly listId = this.route.snapshot.paramMap.get('id');
 
@@ -44,6 +46,13 @@ export class ListInvite {
 
   constructor() {
     this.loadList();
+  }
+
+  ngOnDestroy(): void {
+    if (this.requestsChannel) {
+      this.invitationService.unsubscribeFromMembershipRequests(this.requestsChannel);
+      this.requestsChannel = null;
+    }
   }
 
   private async loadList(): Promise<void> {
@@ -73,6 +82,7 @@ export class ListInvite {
 
     this.list.set(data);
     this.loadPendingRequests(this.listId);
+    this.subscribeToRequests(this.listId);
   }
 
   private async loadPendingRequests(listId: string): Promise<void> {
@@ -85,6 +95,28 @@ export class ListInvite {
 
     if (error) {
       this.requestsError.set('No se han podido cargar las solicitudes pendientes.');
+      return;
+    }
+
+    this.pendingRequests.set(data ?? []);
+  }
+
+  private subscribeToRequests(listId: string): void {
+    this.requestsChannel = this.invitationService.subscribeToListRequests(
+      listId,
+      (change) => {
+        this.pendingRequests.update((current) =>
+          this.invitationService.mergeListRequestsChange(current, change),
+        );
+      },
+      () => this.refreshPendingRequests(listId),
+    );
+  }
+
+  private async refreshPendingRequests(listId: string): Promise<void> {
+    const { data, error } = await this.invitationService.getPendingRequestsForList(listId);
+
+    if (error) {
       return;
     }
 

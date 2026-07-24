@@ -249,23 +249,32 @@ describe('InvitationService', () => {
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('user_id', null);
     });
 
-    it('returns the data/error Supabase gives back, including the embedded list', async () => {
-      const requests: PendingInvitation[] = [
-        {
-          id: 'req-1',
-          user_id: 'user-1',
-          list_id: 'list-1',
-          origin: 'INVITE',
-          created_at: '2026-01-01T00:00:00.000Z',
-          list: { name: 'Compra semanal' },
-        },
-      ];
-      setup({ data: requests, error: null });
+    it('returns the data Supabase gives back, deriving modified_at from created_at', async () => {
+      const rawRequest = {
+        id: 'req-1',
+        user_id: 'user-1',
+        list_id: 'list-1',
+        origin: 'INVITE' as const,
+        created_at: '2026-01-01T00:00:00.000Z',
+        list: { name: 'Compra semanal' },
+      };
+      setup({ data: [rawRequest], error: null });
 
       const result = await service.getMyPendingInvitations();
 
-      expect(result.data).toEqual(requests);
+      const expected: PendingInvitation = { ...rawRequest, modified_at: rawRequest.created_at };
+      expect(result.data).toEqual([expected]);
       expect(result.error).toBeNull();
+    });
+
+    it('propagates an error without transforming it', async () => {
+      const error = { message: 'network error' };
+      setup({ data: null, error });
+
+      const result = await service.getMyPendingInvitations();
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
     });
   });
 
@@ -283,23 +292,138 @@ describe('InvitationService', () => {
       expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('origin', 'REQUEST');
     });
 
-    it('returns the data/error Supabase gives back, including the embedded profile', async () => {
-      const requests: PendingRequest[] = [
-        {
-          id: 'req-2',
-          user_id: 'user-2',
-          list_id: 'list-1',
-          origin: 'REQUEST',
-          created_at: '2026-01-01T00:00:00.000Z',
-          profile: { username: 'maria', first_name: 'María', last_name: 'García' },
-        },
-      ];
-      setup({ data: requests, error: null });
+    it('returns the data Supabase gives back, deriving modified_at from created_at', async () => {
+      const rawRequest = {
+        id: 'req-2',
+        user_id: 'user-2',
+        list_id: 'list-1',
+        origin: 'REQUEST' as const,
+        created_at: '2026-01-01T00:00:00.000Z',
+        profile: { username: 'maria', first_name: 'María', last_name: 'García' },
+      };
+      setup({ data: [rawRequest], error: null });
 
       const result = await service.getPendingRequestsForList('list-1');
 
-      expect(result.data).toEqual(requests);
+      const expected: PendingRequest = { ...rawRequest, modified_at: rawRequest.created_at };
+      expect(result.data).toEqual([expected]);
       expect(result.error).toBeNull();
+    });
+
+    it('propagates an error without transforming it', async () => {
+      const error = { message: 'network error' };
+      setup({ data: null, error });
+
+      const result = await service.getPendingRequestsForList('list-1');
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
+    });
+  });
+
+  describe('mergeMyInvitationsChange', () => {
+    function makeInvitation(overrides: Partial<PendingInvitation> = {}): PendingInvitation {
+      return {
+        id: 'req-1',
+        user_id: 'user-1',
+        list_id: 'list-1',
+        origin: 'INVITE',
+        created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-01T00:00:00.000Z',
+        list: { name: 'Compra semanal' },
+        ...overrides,
+      };
+    }
+
+    it('delegates to the shared mergeChange function for INSERT/UPDATE', () => {
+      setup();
+      const existing = makeInvitation({ id: 'req-1' });
+      const incoming = makeInvitation({ id: 'req-2', list: { name: 'Otra lista' } });
+
+      const result = service.mergeMyInvitationsChange([existing], {
+        eventType: 'INSERT',
+        item: incoming,
+      });
+
+      expect(result).toEqual([existing, incoming]);
+    });
+
+    it('resolves a DELETE by id, using the existing item already in state', () => {
+      setup();
+      const toKeep = makeInvitation({ id: 'req-2' });
+      const toDelete = makeInvitation({ id: 'req-1' });
+
+      const result = service.mergeMyInvitationsChange([toDelete, toKeep], {
+        eventType: 'DELETE',
+        id: 'req-1',
+      });
+
+      expect(result).toEqual([toKeep]);
+    });
+
+    it('is a no-op if the DELETE id is not currently in state', () => {
+      setup();
+      const existing = makeInvitation({ id: 'req-1' });
+
+      const result = service.mergeMyInvitationsChange([existing], {
+        eventType: 'DELETE',
+        id: 'unknown-id',
+      });
+
+      expect(result).toEqual([existing]);
+    });
+  });
+
+  describe('mergeListRequestsChange', () => {
+    function makeRequest(overrides: Partial<PendingRequest> = {}): PendingRequest {
+      return {
+        id: 'req-1',
+        user_id: 'user-1',
+        list_id: 'list-1',
+        origin: 'REQUEST',
+        created_at: '2026-01-01T00:00:00.000Z',
+        modified_at: '2026-01-01T00:00:00.000Z',
+        profile: { username: 'maria', first_name: 'María', last_name: 'García' },
+        ...overrides,
+      };
+    }
+
+    it('delegates to the shared mergeChange function for INSERT/UPDATE', () => {
+      setup();
+      const existing = makeRequest({ id: 'req-1' });
+      const incoming = makeRequest({ id: 'req-2', profile: { username: 'juan', first_name: 'Juan', last_name: 'Pérez' } });
+
+      const result = service.mergeListRequestsChange([existing], {
+        eventType: 'INSERT',
+        item: incoming,
+      });
+
+      expect(result).toEqual([existing, incoming]);
+    });
+
+    it('resolves a DELETE by id, using the existing item already in state', () => {
+      setup();
+      const toKeep = makeRequest({ id: 'req-2' });
+      const toDelete = makeRequest({ id: 'req-1' });
+
+      const result = service.mergeListRequestsChange([toDelete, toKeep], {
+        eventType: 'DELETE',
+        id: 'req-1',
+      });
+
+      expect(result).toEqual([toKeep]);
+    });
+
+    it('is a no-op if the DELETE id is not currently in state', () => {
+      setup();
+      const existing = makeRequest({ id: 'req-1' });
+
+      const result = service.mergeListRequestsChange([existing], {
+        eventType: 'DELETE',
+        id: 'unknown-id',
+      });
+
+      expect(result).toEqual([existing]);
     });
   });
 });

@@ -1,5 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { InvitationService, PendingInvitation } from '../../core/invitation.service';
 
@@ -9,9 +10,10 @@ import { InvitationService, PendingInvitation } from '../../core/invitation.serv
   templateUrl: './invitations.html',
   styleUrl: './invitations.css',
 })
-export class Invitations {
+export class Invitations implements OnDestroy {
   private readonly invitationService = inject(InvitationService);
   private readonly router = inject(Router);
+  private invitationsChannel: RealtimeChannel | null = null;
 
   protected readonly invitations = signal<PendingInvitation[]>([]);
   protected readonly isLoading = signal(true);
@@ -22,6 +24,35 @@ export class Invitations {
 
   constructor() {
     this.loadInvitations();
+    this.subscribeToInvitations();
+  }
+
+  ngOnDestroy(): void {
+    if (this.invitationsChannel) {
+      this.invitationService.unsubscribeFromMembershipRequests(this.invitationsChannel);
+      this.invitationsChannel = null;
+    }
+  }
+
+  private subscribeToInvitations(): void {
+    this.invitationsChannel = this.invitationService.subscribeToMyInvitations(
+      (change) => {
+        this.invitations.update((current) =>
+          this.invitationService.mergeMyInvitationsChange(current, change),
+        );
+      },
+      () => this.refreshInvitations(),
+    );
+  }
+
+  private async refreshInvitations(): Promise<void> {
+    const { data, error } = await this.invitationService.getMyPendingInvitations();
+
+    if (error) {
+      return;
+    }
+
+    this.invitations.set(data ?? []);
   }
 
   private async loadInvitations(): Promise<void> {
