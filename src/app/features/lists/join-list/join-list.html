@@ -74,6 +74,25 @@
       </div>
 
       @switch (qrState()) {
+        @case ('checking-permission') {
+          <p class="qr-status" role="status">Comprobando permisos de cámara…</p>
+        }
+        @case ('prompt-intro') {
+          <div class="qr-intro">
+            <p>
+              Para escanear un código QR necesitamos acceso a la cámara de tu dispositivo. Al
+              continuar, tu navegador te pedirá permiso.
+            </p>
+            <button
+              #introContinueButton
+              type="button"
+              class="btn btn-primary"
+              (click)="startCameraFromIntro()"
+            >
+              Continuar
+            </button>
+          </div>
+        }
         @case ('starting') {
           <p class="qr-status" role="status">Iniciando cámara…</p>
         }

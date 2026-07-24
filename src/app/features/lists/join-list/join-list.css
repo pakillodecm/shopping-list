@@ -142,6 +142,7 @@
   color: var(--color-text);
 }
 
+.qr-intro,
 .qr-confirm {
   display: flex;
   flex-direction: column;
@@ -152,8 +153,12 @@
   background-color: var(--color-surface);
 }
 
+.qr-intro p,
 .qr-confirm p {
   margin: 0;
+}
+
+.qr-confirm p {
   font-weight: var(--font-weight-medium);
 }
 
