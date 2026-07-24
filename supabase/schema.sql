@@ -270,6 +270,117 @@ $$;
 
 
 -- ----------------------------------------------------------------------------
+-- Leave list & ownership transfer (Stage 6, HU-09)
+-- ----------------------------------------------------------------------------
+
+-- Member leaves a list, with ownership transfer or sole-owner deletion.
+--
+-- - Non-owner (CA-09.1): just deletes their own membership row. This needs
+--   security definer because memberships has no delete policy at all (all
+--   existing writes to it go through security-definer functions like
+--   accept_invitation/approve_join_request) — a plain authenticated delete
+--   would be blocked by RLS's default deny.
+-- - Owner with other members (CA-09.2/CA-09.3): transfers owner_id to
+--   p_successor_id if given, otherwise to the member with the earliest
+--   joined_at (stable tiebreak by id), then deletes the outgoing owner's
+--   membership. Security definer is required here too: "Only owner can
+--   update list" has `with check (owner_id = auth.uid())`, which would
+--   reject an update that changes owner_id to someone else.
+-- - Sole owner (CA-09.4/09.5): deletes the list outright. Cascades to
+--   list_items, memberships and membership_requests via their existing
+--   `on delete cascade` FKs to lists(id) — no new cascade needed. CA-09.4's
+--   confirmation step is a frontend concern (same ConfirmModal pattern as
+--   other destructive actions); this function performs the deletion
+--   unconditionally once called, same as how list delete itself has no
+--   confirmation param at the DB layer.
+--
+-- Returns which outcome happened (list_deleted / new_owner_id) instead of
+-- letting the frontend infer it from its own call context — same
+-- already_pending criterion used in invite_user_to_list/request_to_join_by_code.
+-- Output column names (list_deleted, new_owner_id) don't collide with any
+-- real table column, but every table reference is still aliased and
+-- qualified anyway, matching the defensive style used since the 42702
+-- ambiguity bugs hit those two Stage 5 functions.
+create function public.leave_list(p_list_id uuid, p_successor_id uuid default null)
+returns table (list_deleted boolean, new_owner_id uuid)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  is_owner boolean;
+  other_members_count int;
+  successor_is_member boolean;
+  v_new_owner_id uuid;
+begin
+  if not exists (
+    select 1 from public.memberships m
+    where m.list_id = p_list_id and m.user_id = auth.uid()
+  ) then
+    raise exception 'You are not a member of this list';
+  end if;
+
+  select exists(
+    select 1 from public.lists l where l.id = p_list_id and l.owner_id = auth.uid()
+  ) into is_owner;
+
+  if not is_owner then
+    delete from public.memberships m
+    where m.list_id = p_list_id and m.user_id = auth.uid();
+
+    return query select false, null::uuid;
+    return;
+  end if;
+
+  select count(*) into other_members_count
+  from public.memberships m
+  where m.list_id = p_list_id and m.user_id != auth.uid();
+
+  if other_members_count = 0 then
+    delete from public.lists l where l.id = p_list_id and l.owner_id = auth.uid();
+
+    return query select true, null::uuid;
+    return;
+  end if;
+
+  if p_successor_id is not null then
+    if p_successor_id = auth.uid() then
+      raise exception 'Cannot transfer ownership to yourself';
+    end if;
+
+    select exists(
+      select 1 from public.memberships m
+      where m.list_id = p_list_id and m.user_id = p_successor_id
+    ) into successor_is_member;
+
+    if not successor_is_member then
+      raise exception 'The chosen successor is not a member of this list';
+    end if;
+
+    v_new_owner_id := p_successor_id;
+  else
+    select m.user_id into v_new_owner_id
+    from public.memberships m
+    where m.list_id = p_list_id and m.user_id != auth.uid()
+    order by m.joined_at asc, m.id asc
+    limit 1;
+  end if;
+
+  update public.lists l
+  set owner_id = v_new_owner_id
+  where l.id = p_list_id;
+
+  delete from public.memberships m
+  where m.list_id = p_list_id and m.user_id = auth.uid();
+
+  return query select false, v_new_owner_id;
+end;
+$$;
+
+grant execute on function public.leave_list(uuid, uuid) to authenticated;
+
+
+-- ----------------------------------------------------------------------------
 -- membership_requests
 -- ----------------------------------------------------------------------------
 
