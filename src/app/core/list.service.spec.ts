@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import type { User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LeaveListResult, List, ListService } from './list.service';
+import { LeaveListResult, List, ListMember, ListService } from './list.service';
 import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
 
@@ -24,6 +24,7 @@ function createSupabaseServiceMock(result: QueryResult) {
     eq: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    order: vi.fn(),
     rpc: vi.fn(),
     overrideTypes: vi.fn(),
     single: vi.fn().mockResolvedValue(result),
@@ -35,6 +36,7 @@ function createSupabaseServiceMock(result: QueryResult) {
   builder.eq.mockReturnValue(builder);
   builder.update.mockReturnValue(builder);
   builder.delete.mockReturnValue(builder);
+  builder.order.mockReturnValue(builder);
   builder.rpc.mockReturnValue(builder);
   builder.overrideTypes.mockReturnValue(builder);
 
@@ -298,6 +300,47 @@ describe('ListService', () => {
       setup({ data: null, error });
 
       const result = await service.leaveList('list-1', 'user-2');
+
+      expect(result.error).toEqual(error);
+      expect(result.data).toBeNull();
+    });
+  });
+
+  describe('getListMembers', () => {
+    it('selects memberships filtered by list id, embedding the profile, ordered by joined_at', async () => {
+      setup();
+
+      await service.getListMembers('list-1');
+
+      expect(supabaseServiceMock.client.from).toHaveBeenCalledWith('memberships');
+      expect(supabaseServiceMock.client.select).toHaveBeenCalledWith(
+        'user_id, joined_at, profile:profiles(username, first_name, last_name)',
+      );
+      expect(supabaseServiceMock.client.eq).toHaveBeenCalledWith('list_id', 'list-1');
+      expect(supabaseServiceMock.client.order).toHaveBeenCalledWith('joined_at', { ascending: true });
+    });
+
+    it('returns the data Supabase gives back', async () => {
+      const members: ListMember[] = [
+        {
+          user_id: 'user-2',
+          joined_at: '2026-01-01T00:00:00.000Z',
+          profile: { username: 'ana', first_name: 'Ana', last_name: 'García' },
+        },
+      ];
+      setup({ data: members, error: null });
+
+      const result = await service.getListMembers('list-1');
+
+      expect(result.data).toEqual(members);
+      expect(result.error).toBeNull();
+    });
+
+    it('propagates an error without transforming it', async () => {
+      const error = { message: 'network error' };
+      setup({ data: null, error });
+
+      const result = await service.getListMembers('list-1');
 
       expect(result.error).toEqual(error);
       expect(result.data).toBeNull();

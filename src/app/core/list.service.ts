@@ -33,6 +33,18 @@ export interface LeaveListResult {
   new_owner_id: string | null;
 }
 
+export interface MemberProfile {
+  username: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface ListMember {
+  user_id: string;
+  joined_at: string;
+  profile: MemberProfile;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListService {
   private readonly supabaseService = inject(SupabaseService);
@@ -99,6 +111,21 @@ export class ListService {
     return this.supabaseService.client
       .rpc('leave_list', { p_list_id: listId, p_successor_id: successorId ?? null })
       .single<LeaveListResult>();
+  }
+
+  // Ordered by joined_at ascending so a caller building a successor picker
+  // (Stage 6) can label/preselect "the oldest member" the same way leave_list
+  // itself breaks ties server-side, without duplicating that logic. Same
+  // profile embed pattern as getPendingRequestsForList in InvitationService.
+  async getListMembers(listId: string) {
+    const { data, error } = await this.supabaseService.client
+      .from('memberships')
+      .select('user_id, joined_at, profile:profiles(username, first_name, last_name)')
+      .eq('list_id', listId)
+      .order('joined_at', { ascending: true })
+      .overrideTypes<ListMember[], { merge: false }>();
+
+    return { data, error };
   }
 
   subscribeToLists(onChange: (change: ListChange) => void, onReconnect: () => void): RealtimeChannel {
