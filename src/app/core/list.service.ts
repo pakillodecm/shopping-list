@@ -117,6 +117,15 @@ export class ListService {
       .single<LeaveListResult>();
   }
 
+  // remove_member returns void — unlike leave_list there's no ambiguous
+  // outcome to report back, it's always just "that membership is gone".
+  removeMember(listId: string, userId: string) {
+    return this.supabaseService.client.rpc('remove_member', {
+      p_list_id: listId,
+      p_user_id: userId,
+    });
+  }
+
   // Ordered by joined_at ascending so a caller building a successor picker
   // (Stage 6) can label/preselect "the oldest member" the same way leave_list
   // itself breaks ties server-side, without duplicating that logic. Same

@@ -306,6 +306,28 @@ describe('ListService', () => {
     });
   });
 
+  describe('removeMember', () => {
+    it('calls the remove_member RPC with the list id and the member id', async () => {
+      setup();
+
+      await service.removeMember('list-1', 'user-2');
+
+      expect(supabaseServiceMock.client.rpc).toHaveBeenCalledWith('remove_member', {
+        p_list_id: 'list-1',
+        p_user_id: 'user-2',
+      });
+    });
+
+    it('propagates an error (e.g. not the owner, self-removal, or not a member) without transforming it', async () => {
+      const error = { message: 'That user is not a member of this list' };
+      setup({ data: null, error });
+
+      const result = await service.removeMember('list-1', 'user-2');
+
+      expect(result.error).toEqual(error);
+    });
+  });
+
   describe('getListMembers', () => {
     it('selects memberships filtered by list id, embedding the profile, ordered by joined_at', async () => {
       setup();
