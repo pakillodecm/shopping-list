@@ -21,6 +21,13 @@ interface MembershipWithList {
   list: List;
 }
 
+interface Membership {
+  id: string;
+  user_id: string;
+  list_id: string;
+  joined_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ListService {
   private readonly supabaseService = inject(SupabaseService);
@@ -95,6 +102,35 @@ export class ListService {
   }
 
   unsubscribeFromLists(channel: RealtimeChannel): void {
+    this.supabaseService.client.removeChannel(channel);
+  }
+
+  // Gaining access to a list (approved join request, accepted invite) is an
+  // INSERT on `memberships`, not on `lists` — the list row itself doesn't
+  // change, so subscribeToLists() above never fires for it. Filtered by
+  // user_id (a plain column, like membership_requests) so this only reacts
+  // to the current user's own new memberships. Only INSERT is handled:
+  // memberships rows are otherwise immutable in the app as it stands today
+  // (no leave/remove-member UI yet — that's Stage 6).
+  subscribeToMyMemberships(
+    onNewMembership: (listId: string) => void,
+    onReconnect: () => void,
+  ): RealtimeChannel {
+    const userId = this.authService.user()?.id ?? null;
+
+    return this.supabaseService.client
+      .channel(`memberships:mine:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'memberships', filter: `user_id=eq.${userId}` },
+        (payload: RealtimePostgresChangesPayload<Membership>) => {
+          onNewMembership((payload.new as Membership).list_id);
+        },
+      )
+      .subscribe(createReconnectHandler(onReconnect));
+  }
+
+  unsubscribeFromMemberships(channel: RealtimeChannel): void {
     this.supabaseService.client.removeChannel(channel);
   }
 

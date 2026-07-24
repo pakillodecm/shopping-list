@@ -18,6 +18,7 @@ export class Lists implements OnDestroy {
   private readonly listService = inject(ListService);
   private readonly authService = inject(AuthService);
   private listsChannel: RealtimeChannel | null = null;
+  private membershipsChannel: RealtimeChannel | null = null;
 
   protected readonly lists = signal<List[]>([]);
   protected readonly isLoading = signal(true);
@@ -42,12 +43,17 @@ export class Lists implements OnDestroy {
   constructor() {
     this.loadLists();
     this.subscribeToLists();
+    this.subscribeToMemberships();
   }
 
   ngOnDestroy(): void {
     if (this.listsChannel) {
       this.listService.unsubscribeFromLists(this.listsChannel);
       this.listsChannel = null;
+    }
+    if (this.membershipsChannel) {
+      this.listService.unsubscribeFromMemberships(this.membershipsChannel);
+      this.membershipsChannel = null;
     }
   }
 
@@ -60,6 +66,30 @@ export class Lists implements OnDestroy {
         this.lists.update((current) => this.listService.mergeListChange(current, change));
       },
       () => this.refreshLists(),
+    );
+  }
+
+  // Being approved into a list (join request approved, invite accepted)
+  // never touches the `lists` row itself — it's an INSERT on `memberships` —
+  // so subscribeToLists() above never sees it. This fetches just that one
+  // list and merges it in, instead of a full refetch, to keep it as
+  // immediate as every other realtime update on this screen.
+  private subscribeToMemberships(): void {
+    this.membershipsChannel = this.listService.subscribeToMyMemberships(
+      (listId) => this.addNewlyJoinedList(listId),
+      () => this.refreshLists(),
+    );
+  }
+
+  private async addNewlyJoinedList(listId: string): Promise<void> {
+    const { data, error } = await this.listService.getList(listId);
+
+    if (error || !data) {
+      return;
+    }
+
+    this.lists.update((current) =>
+      this.listService.mergeListChange(current, { eventType: 'INSERT', item: data }),
     );
   }
 

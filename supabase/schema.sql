@@ -137,6 +137,24 @@ using (
 
 grant select on public.memberships to authenticated;
 
+-- Stage 5 (Realtime on invitations): gaining access to a list (an approved
+-- join request or an accepted invite) is an INSERT on memberships, not an
+-- UPDATE on lists — the list row itself never changes — so the client needs
+-- its own subscription on this table to notice it live. A table must be in
+-- this publication for Postgres to emit any logical-replication events for
+-- it at all, regardless of which event types a client subscribes to.
+alter publication supabase_realtime add table public.memberships;
+
+-- Not required for the INSERT-only subscription above (INSERT's "new" row
+-- is always sent in full regardless of replica identity — only "old" rows
+-- on UPDATE/DELETE are truncated under the default). Set now anyway, ahead
+-- of Stage 6 (leave list / remove member, which DELETEs a membership row),
+-- to avoid hitting the exact same silent-drop bug a fourth time once that
+-- lands — see the identical reasoning already applied to list_items, lists,
+-- and membership_requests. Pure schema config, no UI, no security
+-- implication either way (see CLAUDE.md's "Build order" exception).
+alter table public.memberships replica identity full;
+
 alter table public.lists enable row level security;
 
 create policy "Lists are viewable by owner or members"
