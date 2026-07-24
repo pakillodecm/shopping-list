@@ -24,6 +24,17 @@
           }
         </a>
       }
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="startLeaveList()"
+        [disabled]="isLoadingSuccessorOptions() || isLeavingList()"
+      >
+        {{ isLoadingSuccessorOptions() ? 'Cargando…' : 'Abandonar esta lista' }}
+      </button>
+      @if (successorOptionsError()) {
+        <p class="alert alert-danger" role="alert">{{ successorOptionsError() }}</p>
+      }
     </div>
 
     <form class="add-item-form" (submit)="submitAddItem($event, textInput)" novalidate>
@@ -135,6 +146,27 @@
       [busy]="isDeletingItem()"
       (confirmed)="confirmDeleteItem(item)"
       (cancelled)="cancelDeleteItem()"
+    />
+  }
+
+  @if (successorOptions(); as options) {
+    <app-choose-successor-dialog
+      [members]="options"
+      (confirmed)="confirmSuccessorChoice($event)"
+      (cancelled)="cancelSuccessorChoice()"
+    />
+  }
+
+  @if (leaveConfirmKind()) {
+    <app-confirm-modal
+      title="Abandonar lista"
+      [message]="leaveConfirmMessage()"
+      confirmText="Sí, abandonar"
+      cancelText="No"
+      [errorMessage]="leaveListError()"
+      [busy]="isLeavingList()"
+      (confirmed)="confirmLeaveList()"
+      (cancelled)="cancelLeaveList()"
     />
   }
 </div>

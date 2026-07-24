@@ -1,22 +1,31 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../../core/auth.service';
 import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { ItemService, ListItem } from '../../../core/item.service';
 import { List, ListService } from '../../../core/list.service';
+import {
+  ChooseSuccessorDialog,
+  SuccessorOption,
+} from '../../../shared/choose-successor-dialog/choose-successor-dialog';
 import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
 import { Autofocus } from '../autofocus.directive';
 
+// Which "leave list" confirmation copy to show (CA-09.1/09.2-09.3/09.4-09.5).
+// Determined in startLeaveList() below.
+type LeaveConfirmKind = 'non-owner' | 'transfer' | 'sole-owner';
+
 @Component({
   selector: 'app-list-detail',
-  imports: [RouterLink, Autofocus, ConfirmModal],
+  imports: [RouterLink, Autofocus, ConfirmModal, ChooseSuccessorDialog],
   templateUrl: './list-detail.html',
   styleUrl: './list-detail.css',
 })
 export class ListDetail implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly listService = inject(ListService);
   private readonly itemService = inject(ItemService);
   private readonly authService = inject(AuthService);
@@ -60,6 +69,39 @@ export class ListDetail implements OnDestroy {
   protected readonly deletingItem = computed(
     () => this.items().find((item) => item.id === this.deletingItemId()) ?? null,
   );
+
+  // Leave list (RF-09, CA-09.1-09.6). Any member can leave; startLeaveList()
+  // below decides which of the three flows applies. isOwner() alone isn't
+  // enough to tell "transfer" from "sole owner deletes" apart, so an owner
+  // click fetches getListMembers() once — the same call also supplies the
+  // successor picker's options, so there's no separate lighter "just count
+  // members" query to maintain.
+  protected readonly isLoadingSuccessorOptions = signal(false);
+  protected readonly successorOptionsError = signal<string | null>(null);
+  protected readonly successorOptions = signal<SuccessorOption[] | null>(null);
+
+  protected readonly leaveConfirmKind = signal<LeaveConfirmKind | null>(null);
+  protected readonly chosenSuccessorId = signal<string | undefined>(undefined);
+  protected readonly chosenSuccessorLabel = signal<string | null>(null);
+  protected readonly isLeavingList = signal(false);
+  protected readonly leaveListError = signal<string | null>(null);
+
+  protected readonly leaveConfirmMessage = computed(() => {
+    switch (this.leaveConfirmKind()) {
+      case 'non-owner':
+        return '¿Seguro que quieres abandonar esta lista?';
+      case 'sole-owner':
+        return 'Eres el único miembro de esta lista. Si la abandonas, se eliminará por completo junto con todos sus ítems. Esta acción no se puede deshacer.';
+      case 'transfer': {
+        const label = this.chosenSuccessorLabel();
+        return label
+          ? `¿Seguro que quieres abandonar la lista? La propiedad pasará a ${label}.`
+          : '¿Seguro que quieres abandonar la lista? La propiedad pasará al miembro más antiguo.';
+      }
+      default:
+        return '';
+    }
+  });
 
   constructor() {
     this.loadListDetail();
@@ -297,5 +339,107 @@ export class ListDetail implements OnDestroy {
       this.itemService.mergeItemChange(current, { eventType: 'DELETE', item }),
     );
     this.deletingItemId.set(null);
+  }
+
+  async startLeaveList(): Promise<void> {
+    this.leaveListError.set(null);
+
+    if (!this.isOwner()) {
+      this.leaveConfirmKind.set('non-owner');
+      return;
+    }
+
+    if (!this.listId) {
+      return;
+    }
+
+    this.isLoadingSuccessorOptions.set(true);
+    this.successorOptionsError.set(null);
+
+    const { data, error } = await this.listService.getListMembers(this.listId);
+
+    this.isLoadingSuccessorOptions.set(false);
+
+    if (error) {
+      this.successorOptionsError.set(
+        'No se han podido cargar los miembros de la lista. Inténtalo de nuevo.',
+      );
+      return;
+    }
+
+    const currentUserId = this.currentUserId();
+    const otherMembers = (data ?? []).filter((member) => member.user_id !== currentUserId);
+
+    if (otherMembers.length === 0) {
+      this.leaveConfirmKind.set('sole-owner');
+      return;
+    }
+
+    this.successorOptions.set(
+      otherMembers.map((member): SuccessorOption => ({
+        id: member.user_id,
+        label: `${member.profile.first_name} ${member.profile.last_name} (${member.profile.username})`,
+      })),
+    );
+  }
+
+  confirmSuccessorChoice(successorId: string | undefined): void {
+    const options = this.successorOptions() ?? [];
+    const chosenOption = successorId ? options.find((option) => option.id === successorId) : undefined;
+
+    this.chosenSuccessorId.set(successorId);
+    this.chosenSuccessorLabel.set(chosenOption?.label ?? null);
+    this.successorOptions.set(null);
+    this.leaveConfirmKind.set('transfer');
+  }
+
+  cancelSuccessorChoice(): void {
+    this.successorOptions.set(null);
+  }
+
+  cancelLeaveList(): void {
+    this.leaveConfirmKind.set(null);
+    this.chosenSuccessorId.set(undefined);
+    this.chosenSuccessorLabel.set(null);
+    this.leaveListError.set(null);
+  }
+
+  async confirmLeaveList(): Promise<void> {
+    if (!this.listId) {
+      return;
+    }
+
+    this.isLeavingList.set(true);
+    this.leaveListError.set(null);
+
+    const successorId = this.leaveConfirmKind() === 'transfer' ? this.chosenSuccessorId() : undefined;
+    const { error } = await this.listService.leaveList(this.listId, successorId);
+
+    this.isLeavingList.set(false);
+
+    if (error) {
+      this.leaveListError.set(this.toReadableLeaveError(error.message));
+      return;
+    }
+
+    this.router.navigate(['/lists']);
+  }
+
+  private toReadableLeaveError(message: string): string {
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes('chosen successor is not a member')) {
+      return 'La persona elegida ha dejado de ser miembro de esta lista. Vuelve a intentarlo.';
+    }
+
+    if (normalized.includes('cannot transfer ownership to yourself')) {
+      return 'No puedes transferir la propiedad a ti mismo.';
+    }
+
+    if (normalized.includes('you are not a member of this list')) {
+      return 'Ya no eres miembro de esta lista.';
+    }
+
+    return 'No se ha podido abandonar la lista. Inténtalo de nuevo.';
   }
 }
