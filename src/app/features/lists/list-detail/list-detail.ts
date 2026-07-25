@@ -5,7 +5,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AuthService } from '../../../core/auth.service';
 import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { ItemService, ListItem } from '../../../core/item.service';
-import { List, ListChange, ListService } from '../../../core/list.service';
+import { LeaveListResult, List, ListChange, ListService } from '../../../core/list.service';
 import {
   ChooseSuccessorDialog,
   SuccessorOption,
@@ -462,8 +462,9 @@ export class ListDetail implements OnDestroy {
     this.isLeavingList.set(true);
     this.leaveListError.set(null);
 
-    const successorId = this.leaveConfirmKind() === 'transfer' ? this.chosenSuccessorId() : undefined;
-    const { error } = await this.listService.leaveList(this.listId, successorId);
+    const kind = this.leaveConfirmKind();
+    const successorId = kind === 'transfer' ? this.chosenSuccessorId() : undefined;
+    const { data, error } = await this.listService.leaveList(this.listId, successorId);
 
     this.isLeavingList.set(false);
 
@@ -472,7 +473,40 @@ export class ListDetail implements OnDestroy {
       return;
     }
 
+    // The branch shown in the modal (kind) was decided from a getListMembers()
+    // snapshot taken before the user confirmed — membership can change in
+    // between (someone joins/leaves) and leave_list() correctly re-evaluates
+    // at execution time, but its actual outcome can then differ from what was
+    // promised. Surface that rather than silently navigating away as if the
+    // promised outcome happened.
+    if (kind && data) {
+      const mismatchMessage = this.buildLeaveOutcomeMismatchMessage(kind, successorId, data);
+      if (mismatchMessage) {
+        window.alert(mismatchMessage);
+      }
+    }
+
     this.router.navigate(['/lists']);
+  }
+
+  private buildLeaveOutcomeMismatchMessage(
+    kind: LeaveConfirmKind,
+    chosenSuccessorId: string | undefined,
+    result: LeaveListResult,
+  ): string | null {
+    if (kind === 'sole-owner' && !result.list_deleted) {
+      return 'La situación de la lista cambió justo antes de confirmar: se transfirió la propiedad a otro miembro, en vez de eliminarse la lista como se te mostró.';
+    }
+
+    if (kind === 'transfer' && result.list_deleted) {
+      return 'La situación de la lista cambió justo antes de confirmar: se eliminó la lista, en vez de transferirse la propiedad como se te mostró.';
+    }
+
+    if (kind === 'transfer' && chosenSuccessorId && result.new_owner_id !== chosenSuccessorId) {
+      return 'La situación de la lista cambió justo antes de confirmar: la propiedad se transfirió a otra persona distinta de la que elegiste.';
+    }
+
+    return null;
   }
 
   private toReadableLeaveError(message: string): string {
