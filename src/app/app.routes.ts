@@ -53,4 +53,8 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
     canActivate: [guestGuard],
   },
+  {
+    path: '**',
+    redirectTo: 'lists',
+  },
 ];
