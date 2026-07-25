@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { AuthService } from '../../../core/auth.service';
+import { IdKeyedActionState } from '../../../core/id-keyed-action-state';
 import {
   List,
   ListChange,
@@ -42,8 +43,7 @@ export class ListMembers implements OnDestroy {
   );
 
   protected readonly removingMemberId = signal<string | null>(null);
-  protected readonly isRemoving = signal(false);
-  protected readonly removeError = signal<string | null>(null);
+  protected readonly removeAction = new IdKeyedActionState();
   protected readonly removingMember = computed(
     () => this.members().find((member) => member.user_id === this.removingMemberId()) ?? null,
   );
@@ -245,13 +245,16 @@ export class ListMembers implements OnDestroy {
   }
 
   startRemoveMember(member: ListMember): void {
-    this.removeError.set(null);
+    this.removeAction.clearError(member.user_id);
     this.removingMemberId.set(member.user_id);
   }
 
   cancelRemoveMember(): void {
+    const id = this.removingMemberId();
     this.removingMemberId.set(null);
-    this.removeError.set(null);
+    if (id) {
+      this.removeAction.clearError(id);
+    }
   }
 
   async confirmRemoveMember(member: ListMember): Promise<void> {
@@ -259,15 +262,14 @@ export class ListMembers implements OnDestroy {
       return;
     }
 
-    this.isRemoving.set(true);
-    this.removeError.set(null);
+    this.removeAction.start(member.user_id);
 
     const { error } = await this.listService.removeMember(this.listId, member.user_id);
 
-    this.isRemoving.set(false);
+    this.removeAction.finish();
 
     if (error) {
-      this.removeError.set(this.toReadableRemoveError(error.message));
+      this.removeAction.setError(member.user_id, this.toReadableRemoveError(error.message));
       return;
     }
 

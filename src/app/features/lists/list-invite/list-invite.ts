@@ -4,6 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { QrCodeComponent } from 'ng-qrcode';
 
 import { AuthService } from '../../../core/auth.service';
+import { IdKeyedActionState } from '../../../core/id-keyed-action-state';
 import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { List, ListService } from '../../../core/list.service';
 import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
@@ -41,8 +42,7 @@ export class ListInvite implements OnDestroy {
   protected readonly isLoadingRequests = signal(true);
   protected readonly requestsError = signal<string | null>(null);
 
-  protected readonly actioningRequestId = signal<string | null>(null);
-  protected readonly requestActionErrors = signal<Record<string, string>>({});
+  protected readonly requestAction = new IdKeyedActionState();
 
   constructor() {
     this.loadList();
@@ -124,15 +124,14 @@ export class ListInvite implements OnDestroy {
   }
 
   async approveRequest(request: PendingRequest): Promise<void> {
-    this.actioningRequestId.set(request.id);
-    this.clearRequestActionError(request.id);
+    this.requestAction.start(request.id);
 
     const { error } = await this.invitationService.approveJoinRequest(request.id);
 
-    this.actioningRequestId.set(null);
+    this.requestAction.finish();
 
     if (error) {
-      this.setRequestActionError(request.id, 'No se ha podido aprobar la solicitud. Inténtalo de nuevo.');
+      this.requestAction.setError(request.id, 'No se ha podido aprobar la solicitud. Inténtalo de nuevo.');
       return;
     }
 
@@ -140,31 +139,18 @@ export class ListInvite implements OnDestroy {
   }
 
   async denyRequest(request: PendingRequest): Promise<void> {
-    this.actioningRequestId.set(request.id);
-    this.clearRequestActionError(request.id);
+    this.requestAction.start(request.id);
 
     const { error } = await this.invitationService.denyJoinRequest(request.id);
 
-    this.actioningRequestId.set(null);
+    this.requestAction.finish();
 
     if (error) {
-      this.setRequestActionError(request.id, 'No se ha podido denegar la solicitud. Inténtalo de nuevo.');
+      this.requestAction.setError(request.id, 'No se ha podido denegar la solicitud. Inténtalo de nuevo.');
       return;
     }
 
     this.pendingRequests.update((current) => current.filter((r) => r.id !== request.id));
-  }
-
-  private setRequestActionError(requestId: string, message: string): void {
-    this.requestActionErrors.update((current) => ({ ...current, [requestId]: message }));
-  }
-
-  private clearRequestActionError(requestId: string): void {
-    this.requestActionErrors.update((current) => {
-      const next = { ...current };
-      delete next[requestId];
-      return next;
-    });
   }
 
   startRegenerateCode(): void {

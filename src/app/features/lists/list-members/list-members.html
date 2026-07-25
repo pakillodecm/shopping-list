@@ -25,7 +25,7 @@
               type="button"
               class="btn btn-secondary member-action"
               (click)="startRemoveMember(member)"
-              [disabled]="isRemoving()"
+              [disabled]="removeAction.isAnyActive()"
               [attr.aria-label]="'Expulsar a ' + member.profile.first_name + ' ' + member.profile.last_name"
             >
               Expulsar
@@ -48,8 +48,8 @@
       "
       confirmText="Sí, expulsar"
       cancelText="No"
-      [errorMessage]="removeError()"
-      [busy]="isRemoving()"
+      [errorMessage]="removeAction.errorFor(member.user_id)"
+      [busy]="removeAction.isActive(member.user_id)"
       (confirmed)="confirmRemoveMember(member)"
       (cancelled)="cancelRemoveMember()"
     />

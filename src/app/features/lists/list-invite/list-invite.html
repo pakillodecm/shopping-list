@@ -76,15 +76,15 @@
                 <span class="pending-request-username">&#64;{{ request.profile.username }}</span>
               </span>
 
-              @if (requestActionErrors()[request.id]) {
-                <p class="alert alert-danger" role="alert">{{ requestActionErrors()[request.id] }}</p>
+              @if (requestAction.errorFor(request.id)) {
+                <p class="alert alert-danger" role="alert">{{ requestAction.errorFor(request.id) }}</p>
               }
 
               <div class="pending-request-actions">
                 <button
                   type="button"
                   class="btn btn-primary pending-request-action"
-                  [disabled]="actioningRequestId() === request.id"
+                  [disabled]="requestAction.isActive(request.id)"
                   (click)="approveRequest(request)"
                   aria-label="Aprobar solicitud de {{ request.profile.username }}"
                 >
@@ -93,7 +93,7 @@
                 <button
                   type="button"
                   class="btn btn-secondary pending-request-action"
-                  [disabled]="actioningRequestId() === request.id"
+                  [disabled]="requestAction.isActive(request.id)"
                   (click)="denyRequest(request)"
                   aria-label="Denegar solicitud de {{ request.profile.username }}"
                 >

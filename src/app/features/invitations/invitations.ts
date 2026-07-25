@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { IdKeyedActionState } from '../../core/id-keyed-action-state';
 import { InvitationService, PendingInvitation } from '../../core/invitation.service';
 
 @Component({
@@ -19,8 +20,7 @@ export class Invitations implements OnDestroy {
   protected readonly isLoading = signal(true);
   protected readonly loadError = signal<string | null>(null);
 
-  protected readonly actioningRequestId = signal<string | null>(null);
-  protected readonly actionErrors = signal<Record<string, string>>({});
+  protected readonly requestAction = new IdKeyedActionState();
 
   constructor() {
     this.loadInvitations();
@@ -72,15 +72,14 @@ export class Invitations implements OnDestroy {
   }
 
   async accept(invitation: PendingInvitation): Promise<void> {
-    this.actioningRequestId.set(invitation.id);
-    this.clearActionError(invitation.id);
+    this.requestAction.start(invitation.id);
 
     const { error } = await this.invitationService.acceptInvitation(invitation.id);
 
-    this.actioningRequestId.set(null);
+    this.requestAction.finish();
 
     if (error) {
-      this.setActionError(invitation.id, 'No se ha podido aceptar la invitación. Inténtalo de nuevo.');
+      this.requestAction.setError(invitation.id, 'No se ha podido aceptar la invitación. Inténtalo de nuevo.');
       return;
     }
 
@@ -88,30 +87,17 @@ export class Invitations implements OnDestroy {
   }
 
   async reject(invitation: PendingInvitation): Promise<void> {
-    this.actioningRequestId.set(invitation.id);
-    this.clearActionError(invitation.id);
+    this.requestAction.start(invitation.id);
 
     const { error } = await this.invitationService.rejectInvitation(invitation.id);
 
-    this.actioningRequestId.set(null);
+    this.requestAction.finish();
 
     if (error) {
-      this.setActionError(invitation.id, 'No se ha podido rechazar la invitación. Inténtalo de nuevo.');
+      this.requestAction.setError(invitation.id, 'No se ha podido rechazar la invitación. Inténtalo de nuevo.');
       return;
     }
 
     this.invitations.update((current) => current.filter((i) => i.id !== invitation.id));
-  }
-
-  private setActionError(requestId: string, message: string): void {
-    this.actionErrors.update((current) => ({ ...current, [requestId]: message }));
-  }
-
-  private clearActionError(requestId: string): void {
-    this.actionErrors.update((current) => {
-      const next = { ...current };
-      delete next[requestId];
-      return next;
-    });
   }
 }

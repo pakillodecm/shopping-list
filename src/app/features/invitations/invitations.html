@@ -15,15 +15,15 @@
         <li class="invitation">
           <span class="invitation-list-name">{{ invitation.list.name }}</span>
 
-          @if (actionErrors()[invitation.id]) {
-            <p class="alert alert-danger" role="alert">{{ actionErrors()[invitation.id] }}</p>
+          @if (requestAction.errorFor(invitation.id)) {
+            <p class="alert alert-danger" role="alert">{{ requestAction.errorFor(invitation.id) }}</p>
           }
 
           <div class="invitation-actions">
             <button
               type="button"
               class="btn btn-primary invitation-action"
-              [disabled]="actioningRequestId() === invitation.id"
+              [disabled]="requestAction.isActive(invitation.id)"
               (click)="accept(invitation)"
               aria-label="Aceptar invitación a {{ invitation.list.name }}"
             >
@@ -32,7 +32,7 @@
             <button
               type="button"
               class="btn btn-secondary invitation-action"
-              [disabled]="actioningRequestId() === invitation.id"
+              [disabled]="requestAction.isActive(invitation.id)"
               (click)="reject(invitation)"
               aria-label="Rechazar invitación a {{ invitation.list.name }}"
             >
