@@ -1,14 +1,14 @@
 import {
   Component,
-  DestroyRef,
   ElementRef,
   afterNextRender,
-  inject,
   input,
   output,
   signal,
   viewChild,
 } from '@angular/core';
+
+import { FocusTrap } from '../focus-trap/focus-trap.directive';
 
 let nextId = 0;
 
@@ -21,16 +21,11 @@ export interface SuccessorOption {
 
 @Component({
   selector: 'app-choose-successor-dialog',
-  imports: [],
+  imports: [FocusTrap],
   templateUrl: './choose-successor-dialog.html',
   styleUrls: ['../confirm-modal/confirm-modal.css', './choose-successor-dialog.css'],
-  host: {
-    '(document:keydown)': 'onDocumentKeydown($event)',
-  },
 })
 export class ChooseSuccessorDialog {
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-
   readonly members = input.required<SuccessorOption[]>();
   readonly title = input('Elegir nuevo propietario');
   readonly message = input(
@@ -53,7 +48,6 @@ export class ChooseSuccessorDialog {
   protected readonly selectedId = signal<string>(AUTO_OPTION_VALUE);
 
   private readonly successorSelect = viewChild<ElementRef<HTMLSelectElement>>('successorSelect');
-  private readonly previouslyFocusedElement = document.activeElement as HTMLElement | null;
 
   constructor() {
     // Unlike ConfirmModal (which focuses Cancel first, to guard against an
@@ -64,20 +58,10 @@ export class ChooseSuccessorDialog {
     afterNextRender(() => {
       this.successorSelect()?.nativeElement.focus();
     });
-
-    inject(DestroyRef).onDestroy(() => {
-      this.previouslyFocusedElement?.focus();
-    });
   }
 
   onSelectionChange(value: string): void {
     this.selectedId.set(value);
-  }
-
-  onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.cancelled.emit();
-    }
   }
 
   onConfirm(): void {
@@ -87,42 +71,5 @@ export class ChooseSuccessorDialog {
 
   onCancel(): void {
     this.cancelled.emit();
-  }
-
-  protected onDocumentKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.cancelled.emit();
-      return;
-    }
-
-    if (event.key === 'Tab') {
-      this.trapFocus(event);
-    }
-  }
-
-  private trapFocus(event: KeyboardEvent): void {
-    const focusable = this.getFocusableElements();
-    if (focusable.length === 0) {
-      return;
-    }
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  private getFocusableElements(): HTMLElement[] {
-    const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    return Array.from(this.elementRef.nativeElement.querySelectorAll<HTMLElement>(selector)).filter(
-      (el) => !el.hasAttribute('disabled'),
-    );
   }
 }

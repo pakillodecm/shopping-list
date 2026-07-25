@@ -1,8 +1,7 @@
-<!-- Escape already closes the dialog via the document keydown listener in the
-     component, so the click-only backdrop dismissal here has a keyboard
+<!-- Escape already closes the dialog via appFocusTrap's document keydown
+     listener, so the click-only backdrop dismissal here has a keyboard
      equivalent — it just isn't on this same element. -->
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-<div class="confirm-modal-backdrop" (click)="onBackdropClick($event)">
+<div class="confirm-modal-backdrop" appFocusTrap (appFocusTrapDismissed)="onCancel()">
   <div
     class="confirm-modal"
     role="dialog"
