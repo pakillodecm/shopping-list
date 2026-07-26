@@ -49,6 +49,7 @@ export class Invitations implements OnDestroy {
     const { data, error } = await this.invitationService.getMyPendingInvitations();
 
     if (error) {
+      console.warn('[refreshInvitations] failed to refresh:', error);
       return;
     }
 

@@ -143,6 +143,7 @@ export class InvitationService {
       .single<Omit<PendingInvitation, 'modified_at'>>();
 
     if (error || !data) {
+      console.warn('[fetchPendingInvitationById] failed to refresh:', error);
       return null;
     }
 
@@ -157,6 +158,7 @@ export class InvitationService {
       .single<Omit<PendingRequest, 'modified_at'>>();
 
     if (error || !data) {
+      console.warn('[fetchPendingRequestById] failed to refresh:', error);
       return null;
     }
 

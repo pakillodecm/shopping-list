@@ -117,6 +117,7 @@ export class ListInvite implements OnDestroy {
     const { data, error } = await this.invitationService.getPendingRequestsForList(listId);
 
     if (error) {
+      console.warn('[refreshPendingRequests] failed to refresh:', error);
       return;
     }
 

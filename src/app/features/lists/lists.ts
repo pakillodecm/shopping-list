@@ -83,6 +83,7 @@ export class Lists implements OnDestroy {
     const { data, error } = await this.invitationService.getMyPendingInvitations();
 
     if (error) {
+      console.warn('[loadPendingInvitationsCount] failed to refresh:', error);
       return;
     }
 
@@ -139,6 +140,7 @@ export class Lists implements OnDestroy {
     const { data, error } = await this.listService.getList(listId);
 
     if (error || !data) {
+      console.warn('[addNewlyJoinedList] failed to refresh:', error);
       return;
     }
 
@@ -176,6 +178,7 @@ export class Lists implements OnDestroy {
     const { data, error } = await this.listService.getMyLists();
 
     if (error) {
+      console.warn('[refreshLists] failed to refresh:', error);
       return;
     }
 

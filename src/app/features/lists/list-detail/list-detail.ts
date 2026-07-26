@@ -147,6 +147,7 @@ export class ListDetail implements OnDestroy {
     const { data, error } = await this.itemService.getItems(listId);
 
     if (error) {
+      console.warn('[refreshItems] failed to refresh:', error);
       return;
     }
 
@@ -186,6 +187,7 @@ export class ListDetail implements OnDestroy {
     const { data, error } = await this.listService.getList(listId);
 
     if (error || !data) {
+      console.warn('[refreshList] failed to refresh:', error);
       this.list.set(null);
       this.loadError.set(this.noAccessErrorMessage);
       return;
