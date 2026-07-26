@@ -7,6 +7,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="manifest" href="manifest.webmanifest" />
+    <script>
+      // Runs before Angular bootstraps (and before any stylesheet swap —
+      // see angular.json's inlineCritical:false, needed so the dark
+      // token overrides aren't deferred to an async-loaded stylesheet) so
+      // the correct [data-theme] is on <html> for the very first paint.
+      // ThemeService reads this same attribute as its initial state
+      // instead of re-deriving it, so this is the only place that decides
+      // "saved preference vs. OS preference".
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var isDark =
+            stored === 'dark' ||
+            (stored !== 'light' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {
+          // localStorage/matchMedia can throw (privacy mode, disabled
+          // storage); fall back silently to the light default.
+        }
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

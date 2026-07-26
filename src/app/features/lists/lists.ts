@@ -5,6 +5,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AuthService } from '../../core/auth.service';
 import { InvitationService, PendingInvitation } from '../../core/invitation.service';
 import { List, ListChange, ListService } from '../../core/list.service';
+import { ThemeService } from '../../core/theme.service';
 import { ConfirmModal } from '../../shared/confirm-modal/confirm-modal';
 import { LogoutButton } from '../auth/logout-button/logout-button';
 import { Autofocus } from './autofocus.directive';
@@ -19,6 +20,7 @@ export class Lists implements OnDestroy {
   private readonly listService = inject(ListService);
   private readonly authService = inject(AuthService);
   private readonly invitationService = inject(InvitationService);
+  private readonly themeService = inject(ThemeService);
   private listsChannel: RealtimeChannel | null = null;
   private membershipsChannel: RealtimeChannel | null = null;
   private invitationsChannel: RealtimeChannel | null = null;
@@ -45,6 +47,8 @@ export class Lists implements OnDestroy {
 
   protected readonly currentUserId = computed(() => this.authService.user()?.id ?? null);
 
+  protected readonly isDarkTheme = computed(() => this.themeService.theme() === 'dark');
+
   protected readonly editingListId = signal<string | null>(null);
   protected readonly isRenaming = signal(false);
   protected readonly renameError = signal<string | null>(null);
@@ -62,6 +66,10 @@ export class Lists implements OnDestroy {
     this.subscribeToMemberships();
     this.loadPendingInvitationsCount();
     this.subscribeToInvitationsCount();
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggle();
   }
 
   ngOnDestroy(): void {

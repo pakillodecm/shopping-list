@@ -1,7 +1,17 @@
 <div class="lists-page">
   <header class="lists-header">
     <h1>Tus listas</h1>
-    <app-logout-button />
+    <div class="lists-header-actions">
+      <button
+        type="button"
+        class="btn btn-secondary theme-toggle"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkTheme() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+      >
+        <span aria-hidden="true">{{ isDarkTheme() ? '☀️' : '🌙' }}</span>
+      </button>
+      <app-logout-button />
+    </div>
   </header>
 
   <form class="create-list-form" (submit)="submitCreate($event, nameInput)" novalidate>
