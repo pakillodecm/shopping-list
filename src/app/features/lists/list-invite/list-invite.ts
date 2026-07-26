@@ -7,11 +7,11 @@ import { AuthService } from '../../../core/auth.service';
 import { IdKeyedActionState } from '../../../core/id-keyed-action-state';
 import { InvitationService, PendingRequest } from '../../../core/invitation.service';
 import { List, ListService } from '../../../core/list.service';
-import { ConfirmModal } from '../../../shared/confirm-modal/confirm-modal';
+import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-list-invite',
-  imports: [RouterLink, QrCodeComponent, ConfirmModal],
+  imports: [RouterLink, QrCodeComponent, ConfirmDialog],
   templateUrl: './list-invite.html',
   styleUrl: './list-invite.css',
 })
