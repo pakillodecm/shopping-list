@@ -71,6 +71,13 @@
           [config]="scannerConfig"
           (event)="onScan($event)"
         ></ngx-scanner-qrcode>
+
+        @if (qrState() === 'starting') {
+          <div class="qr-loading-overlay" role="status">
+            <span class="qr-spinner" aria-hidden="true"></span>
+            <p>Preparando la cámara…</p>
+          </div>
+        }
       </div>
 
       @switch (qrState()) {
@@ -92,9 +99,6 @@
               Continuar
             </button>
           </div>
-        }
-        @case ('starting') {
-          <p class="qr-status" role="status">Iniciando cámara…</p>
         }
         @case ('scanning') {
           <p class="qr-status">Apunta la cámara al código QR de la lista.</p>

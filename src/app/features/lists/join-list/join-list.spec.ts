@@ -292,6 +292,30 @@ describe('JoinList', () => {
   });
 
   describe('starting the camera (getUserMedia / device selection)', () => {
+    // The visual-polish fix for the "black box + bare gray text" transition
+    // seen on real devices: while the probe is pending, qrState stays
+    // 'starting' and the overlay should be showing over the (still blank)
+    // video box rather than nothing. Whether it actually *reads* as smooth
+    // on real hardware isn't something jsdom can judge — this only checks
+    // the template renders the overlay for this state.
+    it('shows a loading overlay while the camera is starting', async () => {
+      mockPermissionsQuery('granted');
+      Object.defineProperty(navigator, 'mediaDevices', {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function -- deliberately never settles
+        value: { getUserMedia: vi.fn(() => new Promise(() => {})) },
+        configurable: true,
+      });
+      const fixture = createFixture();
+
+      openQrTab(fixture);
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(qrState(fixture)).toBe('starting');
+      const overlay = fixture.nativeElement.querySelector('.qr-loading-overlay');
+      expect(overlay?.textContent).toContain('Preparando la cámara');
+    });
+
     it('goes to "unavailable" when getUserMedia itself rejects', async () => {
       mockPermissionsQuery('granted');
       mockGetUserMedia('failure');
