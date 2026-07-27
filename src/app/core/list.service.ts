@@ -28,9 +28,10 @@ interface Membership {
   joined_at: string;
 }
 
-export type MyMembershipChange =
-  | { eventType: 'INSERT'; listId: string }
-  | { eventType: 'DELETE'; listId: string };
+// DELETE carries no listId — see the "no reliable DELETE payload" reminder
+// in CLAUDE.md's "Key domain reminders". Callers must treat any DELETE as
+// "something changed, resync" rather than trying to target a specific list.
+export type MyMembershipChange = { eventType: 'INSERT'; listId: string } | { eventType: 'DELETE' };
 
 export interface LeaveListResult {
   list_deleted: boolean;
@@ -49,9 +50,8 @@ export interface ListMember {
   profile: MemberProfile;
 }
 
-export type ListMembershipChange =
-  | { eventType: 'INSERT'; userId: string }
-  | { eventType: 'DELETE'; userId: string };
+// DELETE carries no userId, for the same reason as MyMembershipChange above.
+export type ListMembershipChange = { eventType: 'INSERT'; userId: string } | { eventType: 'DELETE' };
 
 @Injectable({ providedIn: 'root' })
 export class ListService {
@@ -210,13 +210,18 @@ export class ListService {
   // Gaining access to a list (approved join request, accepted invite) is an
   // INSERT on `memberships`, not on `lists` — the list row itself doesn't
   // change, so subscribeToLists() above never fires for it. Losing access
-  // (leave_list, or the future "remove member") is symmetrically a DELETE on
-  // `memberships` rather than anything on `lists` either — the list keeps
-  // existing for everyone else. Both are filtered by user_id (a plain
-  // column, like membership_requests) so this only reacts to the current
-  // user's own membership rows; UPDATE is never handled because memberships
-  // rows are never updated anywhere in the app (only inserted on
-  // join/accept/approve, deleted on leave).
+  // (leave_list, remove_member) is symmetrically a DELETE on `memberships`
+  // rather than anything on `lists` either — the list keeps existing for
+  // everyone else. The INSERT branch is filtered by user_id (a plain column,
+  // like membership_requests) and its listId is reliable. The DELETE branch
+  // carries no listId at all — see the "DELETE payload" reminder in
+  // CLAUDE.md's "Key domain reminders": Supabase Realtime never lets a
+  // DELETE's old row carry more than the table's own primary key when RLS is
+  // enabled, and this table's primary key is its own synthetic `id`, not
+  // `user_id`/`list_id`. Callers must resync on any DELETE rather than trying
+  // to target a specific list from the event. UPDATE is never handled
+  // because memberships rows are never updated anywhere in the app (only
+  // inserted on join/accept/approve, deleted on leave/removal).
   subscribeToMyMemberships(
     onChange: (change: MyMembershipChange) => void,
     onReconnect: () => void,
@@ -230,11 +235,14 @@ export class ListService {
         { event: '*', schema: 'public', table: 'memberships', filter: `user_id=eq.${userId}` },
         (payload: RealtimePostgresChangesPayload<Membership>) => {
           const eventType = payload.eventType;
-          if (eventType !== 'INSERT' && eventType !== 'DELETE') {
+          if (eventType === 'DELETE') {
+            onChange({ eventType: 'DELETE' });
             return;
           }
-          const row = (eventType === 'DELETE' ? payload.old : payload.new) as Membership;
-          onChange({ eventType, listId: row.list_id });
+          if (eventType !== 'INSERT') {
+            return;
+          }
+          onChange({ eventType: 'INSERT', listId: (payload.new as Membership).list_id });
         },
       )
       .subscribe(createReconnectHandler(onReconnect));
@@ -243,11 +251,16 @@ export class ListService {
   // Any membership change on one specific list, regardless of whose it is —
   // for the /lists/:id/members roster screen, so joins and removals show up
   // live for whoever else is looking at it, not just for the person it
-  // happened to (that's subscribeToMyMemberships above). list_id is a plain
-  // column, like list_items in Stage 4, so this filters server-side just
-  // like that one does. UPDATE is never handled for the same reason as
-  // subscribeToMyMemberships: memberships rows are never updated, only
-  // inserted or deleted.
+  // happened to (that's subscribeToMyMemberships above). The INSERT branch's
+  // userId is reliable and this filter (list_id, a plain column) narrows it
+  // correctly. The DELETE branch carries no userId — same platform reason as
+  // subscribeToMyMemberships above, and note that filter doesn't even apply
+  // to DELETE events server-side in the first place (Realtime never filters
+  // Delete events at all — see the same CLAUDE.md reminder), so this channel
+  // actually receives every DELETE on the whole table, not just this list's;
+  // callers must resync rather than target a specific member. UPDATE is
+  // never handled for the same reason as subscribeToMyMemberships:
+  // memberships rows are never updated, only inserted or deleted.
   subscribeToListMembers(
     listId: string,
     onChange: (change: ListMembershipChange) => void,
@@ -260,11 +273,14 @@ export class ListService {
         { event: '*', schema: 'public', table: 'memberships', filter: `list_id=eq.${listId}` },
         (payload: RealtimePostgresChangesPayload<Membership>) => {
           const eventType = payload.eventType;
-          if (eventType !== 'INSERT' && eventType !== 'DELETE') {
+          if (eventType === 'DELETE') {
+            onChange({ eventType: 'DELETE' });
             return;
           }
-          const row = (eventType === 'DELETE' ? payload.old : payload.new) as Membership;
-          onChange({ eventType, userId: row.user_id });
+          if (eventType !== 'INSERT') {
+            return;
+          }
+          onChange({ eventType: 'INSERT', userId: (payload.new as Membership).user_id });
         },
       )
       .subscribe(createReconnectHandler(onReconnect));

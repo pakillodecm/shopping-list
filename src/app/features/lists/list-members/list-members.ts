@@ -167,6 +167,15 @@ export class ListMembers implements OnDestroy {
   // about MY page access (loadError/list), that one is about the roster
   // contents (members()) — different concerns, even though both ultimately
   // read the same memberships table.
+  //
+  // DELETE events carry no listId (see the "DELETE payload" reminder in
+  // CLAUDE.md's "Key domain reminders"), so there's no way to check "was
+  // this about my current list" up front the way the INSERT branch below
+  // still can — every DELETE on any of my memberships resyncs via
+  // fetchAndApply(), which already re-derives "am I still a member of THIS
+  // list" itself (see its own membership check) and only shows the
+  // no-access error when that's genuinely true, so an unrelated DELETE
+  // elsewhere just costs a harmless extra fetch.
   private subscribeToOwnMembership(): void {
     if (!this.listId) {
       return;
@@ -175,18 +184,16 @@ export class ListMembers implements OnDestroy {
 
     this.membershipsChannel = this.listService.subscribeToMyMemberships(
       (change) => {
-        if (change.listId !== listId) {
-          return;
-        }
-
         if (change.eventType === 'DELETE') {
-          this.list.set(null);
-          this.loadError.set(this.noAccessErrorMessage);
+          this.fetchAndApply();
           return;
         }
 
         // An INSERT for this exact list while already viewing it shouldn't
         // normally happen, but resync defensively if it ever does.
+        if (change.listId !== listId) {
+          return;
+        }
         this.fetchAndApply();
       },
       () => this.fetchAndApply(),
@@ -218,12 +225,19 @@ export class ListMembers implements OnDestroy {
   // PostgREST-time join Realtime doesn't know about — so a new member needs
   // a targeted by-id refetch via getListMember before it can be shown here,
   // same pattern as fetchPendingInvitationById in InvitationService.
+  //
+  // DELETE carries no userId at all (see the "DELETE payload" reminder in
+  // CLAUDE.md's "Key domain reminders"), so there's no id to remove by — and
+  // since Realtime doesn't even filter DELETE events server-side, this
+  // channel receives every DELETE on the whole memberships table, not just
+  // this list's. A full resync via fetchAndApply() is the only reliable
+  // option, same as the reconnect path already uses.
   private async handleMembershipChange(
     listId: string,
     change: ListMembershipChange,
   ): Promise<void> {
     if (change.eventType === 'DELETE') {
-      this.members.update((current) => current.filter((member) => member.user_id !== change.userId));
+      await this.fetchAndApply();
       return;
     }
 
