@@ -338,11 +338,20 @@ export class JoinList implements OnDestroy {
     }
   }
 
-  // Picks the back/rear/environment-labelled camera when there's more than
-  // one, falling back to the last device in the list — on phones with
-  // exactly two cameras, enumerateDevices() conventionally lists front
-  // before back, and labels are only reliably populated after permission is
-  // granted (which, at this point, it already is).
+  // FALLBACK ONLY (see startScanning below for the primary signal): picks
+  // the back/rear/environment-labelled camera when there's more than one,
+  // falling back to the last device in the list — on phones with exactly
+  // two cameras, enumerateDevices() conventionally lists front before back,
+  // and labels are only reliably populated after permission is granted
+  // (which, at this point, it already is). Confirmed while investigating the
+  // iPad back-camera bug this fixes: WebKit gives no reliable orientation
+  // keyword to match on in the first place — "there's no identifier whether
+  // a device is a front or back camera – looking for the string 'front' in
+  // the label is not a reliable option" (W3C mediacapture-main discussions;
+  // WebKit only exposes labels at all once permission is granted, and even
+  // then documents no naming convention for them). This regex is kept as a
+  // safety net for whatever hardware/browser doesn't support the facingMode
+  // preference below, not because it's known to match iPad's actual labels.
   private pickBackCameraDeviceId(devices: ScannerQRCodeDevice[]): string | undefined {
     const backCamera = devices.find((device) => /back|rear|environment/i.test(device.label));
     return (backCamera ?? devices.at(-1) ?? devices[0])?.deviceId;
@@ -372,20 +381,58 @@ export class JoinList implements OnDestroy {
   // answered yet), then explicitly trigger a fresh enumeration and wait for
   // its result before ever touching device selection — removing both
   // races at once.
+  //
+  // Back-camera selection (the iPad bug this fixes, RF-24/CA-13):
+  // `facingMode: {ideal: 'environment'}` asks the OS/browser to use its own
+  // knowledge of the hardware to pick the environment-facing camera, instead
+  // of us guessing from a label WebKit gives no reliable orientation keyword
+  // for (see pickBackCameraDeviceId above) — the same technique other
+  // production QR-scanning libraries use for this exact cross-browser
+  // problem. `ideal`, not `exact`: a hint the browser is free to ignore
+  // rather than a hard requirement, so it never throws OverconstrainedError
+  // on hardware with only one camera (e.g. a laptop webcam) — that case just
+  // gets its only camera, exactly like the previous bare `{video: true}`
+  // did. track.getSettings().deviceId then reports which physical camera it
+  // actually resolved that preference to — a plain, long-supported readback
+  // (unlike getCapabilities(), which WebKit is documented to return
+  // incomplete/empty for on iOS for several camera properties) — and is
+  // trusted only if that deviceId is actually one of the enumerated devices,
+  // falling back to the label heuristic otherwise.
+  //
+  // This is the most robust cross-platform signal available, backed by how
+  // html5-qrcode and other libraries solve the same problem — but it is NOT
+  // proven to be 100% reliable on every iPad model/iOS version: WebKit has
+  // documented regressions where even this exact constraint picks the wrong
+  // lens (e.g. WebKit bug #253186, iOS 16.4 beta selecting ultra-wide for
+  // "environment"). If a specific device still opens the wrong camera, the
+  // manual "switch camera" dropdown (switchCamera(), driven by
+  // availableDevices()) is the deliberate user-facing recovery path — it
+  // lists every camera by its raw label for the user to pick from directly,
+  // rather than guessing, so it keeps working regardless of this
+  // heuristic's accuracy.
   private async startScanning(scanner: NgxScannerQrcodeComponent): Promise<void> {
     this.qrState.set('starting');
 
     let probeStream: MediaStream;
     try {
-      probeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      probeStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
     } catch {
       this.qrState.set('unavailable');
       return;
     }
+    const preferredDeviceId = probeStream.getVideoTracks()[0]?.getSettings().deviceId;
     probeStream.getTracks().forEach((track) => track.stop());
 
     const devices = await this.waitForFreshDevices(scanner);
-    const deviceId = this.pickBackCameraDeviceId(devices);
+    const preferredDeviceIsListed =
+      preferredDeviceId !== undefined &&
+      devices.some((device) => device.deviceId === preferredDeviceId);
+    const deviceId = preferredDeviceIsListed
+      ? preferredDeviceId
+      : this.pickBackCameraDeviceId(devices);
 
     if (!deviceId) {
       this.qrState.set('unavailable');

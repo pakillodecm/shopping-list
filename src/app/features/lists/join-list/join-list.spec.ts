@@ -89,11 +89,22 @@ function mockPermissionsQuery(
   Object.defineProperty(navigator, 'permissions', { value: { query }, configurable: true });
 }
 
-function mockGetUserMedia(outcome: 'success' | 'failure'): { stopTrack: ReturnType<typeof vi.fn> } {
+// preferredDeviceId simulates what track.getSettings().deviceId resolves the
+// facingMode:{ideal:'environment'} preference to (see startScanning in
+// join-list.ts) — undefined by default, matching a platform/browser where
+// that readback isn't available, so existing tests keep exercising the
+// label-fallback path (pickBackCameraDeviceId) unless a test opts in.
+function mockGetUserMedia(
+  outcome: 'success' | 'failure',
+  preferredDeviceId?: string,
+): { stopTrack: ReturnType<typeof vi.fn> } {
   const stopTrack = vi.fn();
   const getUserMedia =
     outcome === 'success'
-      ? vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] })
+      ? vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop: stopTrack }],
+          getVideoTracks: () => [{ getSettings: () => ({ deviceId: preferredDeviceId }) }],
+        })
       : vi.fn().mockRejectedValue(new Error('Permission denied'));
 
   Object.defineProperty(navigator, 'mediaDevices', {
@@ -256,7 +267,10 @@ describe('JoinList', () => {
 
     it('only requests the camera after the user taps "Continuar" on the intro screen, not automatically', async () => {
       mockPermissionsQuery('prompt');
-      const getUserMediaSpy = vi.fn().mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+      const getUserMediaSpy = vi.fn().mockResolvedValue({
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: undefined }) }],
+      });
       Object.defineProperty(navigator, 'mediaDevices', {
         value: { getUserMedia: getUserMediaSpy },
         configurable: true,
@@ -332,6 +346,47 @@ describe('JoinList', () => {
       fixture.detectChanges();
 
       expect(scanner.playDevice).toHaveBeenCalledWith('cam-b');
+    });
+
+    // The iPad fix: getUserMedia's facingMode:{ideal:'environment'} hint
+    // resolves to a real deviceId (read back via getSettings()) that takes
+    // priority over the label heuristic entirely — this is what makes the
+    // fix work even when a device's label gives no "back"/"rear"/
+    // "environment" keyword to match at all (the documented WebKit case).
+    it('prefers the device getSettings().deviceId resolved, even when its label gives no back/rear/environment hint', async () => {
+      mockPermissionsQuery('granted');
+      mockGetUserMedia('success', 'ambiguous-cam');
+      const fixture = createFixture();
+
+      const scanner = openQrTab(fixture);
+      scanner.devicesOnNextLoad = [
+        makeDevice('front-cam', 'Front Camera'),
+        // Neither label matches the back/rear/environment regex — on real
+        // hardware this is the iPad case, standing in for whatever WebKit
+        // actually calls its rear camera.
+        makeDevice('ambiguous-cam', 'Camera 2'),
+      ];
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(scanner.playDevice).toHaveBeenCalledWith('ambiguous-cam');
+      expect(qrState(fixture)).toBe('scanning');
+    });
+
+    it('falls back to the label heuristic when the resolved deviceId is not among the enumerated devices', async () => {
+      mockPermissionsQuery('granted');
+      mockGetUserMedia('success', 'not-in-the-list');
+      const fixture = createFixture();
+
+      const scanner = openQrTab(fixture);
+      scanner.devicesOnNextLoad = [
+        makeDevice('front-cam', 'Front Camera'),
+        makeDevice('back-cam', 'Back Camera'),
+      ];
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(scanner.playDevice).toHaveBeenCalledWith('back-cam');
     });
 
     it('goes to "unavailable" when playDevice reports failure (ok=false)', async () => {
