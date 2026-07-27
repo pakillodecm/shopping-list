@@ -1,0 +1,35 @@
+name: Keep Supabase awake
+
+# Supabase pauses Free plan projects after ~7 days with no database
+# activity (see "Availability" in docs/ai-source-of-truth.md's Tech
+# stack section, and CLAUDE.md). This pings Postgres twice a week —
+# well under that window, with built-in redundancy if one run fails —
+# using only the anon key, never service_role.
+on:
+  schedule:
+    - cron: '0 6 * * 1,4' # Mondays and Thursdays at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # Calls get_list_name_by_code with "0" — a digit the invitation-code
+      # alphabet never generates (see generate_invitation_code in
+      # supabase/schema.sql), so this can never match a real list. The
+      # function is `security definer` with no explicit GRANT EXECUTE, so
+      # it's callable by the anon role by Postgres's default PUBLIC
+      # execute grant (a known, accepted gap — see CLAUDE.md "Known
+      # gaps"). Result is always null; the point is the SELECT it runs
+      # inside, not its output.
+      - name: Ping Supabase (read-only RPC call)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --request POST "$SUPABASE_URL/rest/v1/rpc/get_list_name_by_code" \
+            --header "apikey: $SUPABASE_KEY" \
+            --header "Authorization: Bearer $SUPABASE_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{"p_code": "000000"}'
